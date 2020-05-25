@@ -19,6 +19,6 @@
 
 > https://github.com/OWASP/owasp-mstg/releases/download/1.1.3-excel/MSTG-EN.pdf
 
-- (Mobile App Authentication Architectures)[./README-MSTG-MAAA.md]
+- [Mobile App Authentication Architectures](./README-MSTG-MAAA.md)
 - \# TODO
 

@@ -1,4 +1,4 @@
-## README-OMTG-DATAST-001-BADENCRYPTION
+## OMTG-DATAST-001-BADENCRYPTION
 
 > app/src/main/java/sg/vp/owasp_mobile/OMTG_Android/OMTG_DATAST_001_BadEncryption.java
 
