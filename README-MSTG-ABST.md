@@ -1,8 +1,10 @@
 # Android Basic Security Testing
 
+## Recommended Tools
+
 ### Xposed
 
-Xposed è un framework per moduli che possono modificare il compotamento del sistema e delle app senza cambiare alcuna APK.
+Xposed è un framework per moduli che possono modificare il compotamento del sistema e delle app senza cambiare l'APK.
 Tecnicamente, è una versione estesa di Zygote che esporta API per codice Java in esecuzione quando un nuovo processo viene lanciato.
 L'esecuzione di codice Java all'interno del contesto di un'app appena istanziata permette di risolvere, fare l'hook e l'override di metodi Java appartenenti all'app.
 Xposed usa la reflection per esaminare e modificare un'app in esecuzione.
@@ -10,7 +12,7 @@ Le modifiche vengono applicate in memoria e vengono mantenute solo durante l'ese
 
 Per usare Xposed, è necessario un device rooted.
 I moduli possono essere installati attraverso l'installer dell'app Xposed.
-Dato che la sola installazione di Xposed è facilmente individuabile da SafetyNet, è consigliabile usare Magisk per installare Xposed.
+Dato che la pura installazione di Xposed è facilmente individuabile da SafetyNet, è consigliabile usare Magisk per installare Xposed.
 
 I setup per Xposed e Frida sono simili.
 Entrambi i framework permettono di fare dynamic instrumentation.
@@ -19,7 +21,13 @@ Xposed include altri script, come Inspeckage che permette di testare più a fond
 
 ### Adb
 
-`$ adb forward tcp:<host port> tcp:<device port>`
+Per redirigere il traffico da una porta tcp dell'host a una porta tcp del device:
+
+	$ adb forward tcp:<host port> tcp:<device port>
+	
+Per redirigere il traffico in senso opposto:
+
+	$ adb reverse tcp:<device port> tcp:<host port>
 
 ### Angr
 
@@ -32,18 +40,18 @@ In altre parole: dato un binario e uno stato richiesto, Angr prova a raggiungere
 Apkx è un wrapper Python che agisce da dex converter e Java decompiler.
 Automatizza l'estrazione, conversione e decompilazione di APK.
 
-### Dozer
+### Drozer
 
-Dozer è un framework di security assessment Android che permette di cercare vulnerabilità di sicurezza in app e device basandosi sul ruolo delle app di terze parti, interagendo con gli endpoint ICP dell'app e il sistema operativo sottostante.
+Drozer è un framework di security assessment Android che permette di cercare vulnerabilità di sicurezza in app e device basandosi sul ruolo delle app di terze parti, interagendo con gli endpoint ICP dell'app e il sistema operativo sottostante.
 Automatizza alcuni task e può essere esteso con dei moduli.
-I moduli sono molto utili e coprono diverse categorie tra cui una categoria scanner che permette di cercare difetti comuni con un semplice comando come il modulo `scanner.provider.injection` che individua SQL injection nei content provider in tutte le app installate sul device.
+I moduli sono molto utili e coprono diverse categorie tra cui un insieme di scanner che permettono di cercare difetti comuni con un semplice comando, come il modulo `scanner.provider.injection` che individua SQL injection nei content provider in tutte le app installate sul device.
 
-È necessario installare il dozer agent sul device (`$ adb install dozer.apk`).
-Successivamente si avvia una sessione con il device (`$ adb forward tcp:31415 tcp:31415` e `$ dozer console connect`).
+È necessario installare il drozer agent sul device (`$ adb install drozer.apk`).
+Successivamente si avvia una sessione con il device emulato (`$ adb forward tcp:31415 tcp:31415` e `$ drozer console connect`).
 A questo punto, è possibile per esempio enumerare la superficie d'attacco di un'app col seguente comando: `$ dx> run app.package.attacksurface <package>`.
 Si ottiene una lista di activity, broadcast receiver, content provider e service che sono esposti, cioè sono pubblici e possono essere acceduti da altre app.
-Una volta identificata la superficie d'attacco, puoi interagire con gli endpoint IPC tramite dozer senza scrivere un'app standalone separata.
-Ad esempio se l'app espone un'activity che espone dati sensibili, puoi invocare il modulo `app.activity.start`: `$ dz> run app.activity.start --component <package> <component-name>`.
+Una volta identificata la superficie d'attacco, puoi interagire con gli endpoint IPC tramite drozer senza dover scrivere un'app standalone separata.
+Ad esempio se l'app espone un'activity che fornisce dati sensibili, puoi invocare il modulo `app.activity.start`: `$ dz> run app.activity.start --component <package> <component-name>`.
 Di seguito sono riportati alcuni comandi utili.
 
 	# List all the installed packages
@@ -65,7 +73,340 @@ Di seguito sono riportati alcuni comandi utili.
 	# Detect SQL injections in content providers
 	$ dz> run scanner.provider.injection -a (package name)
 
-\# TODO prova dozer
+### Frida
 
-\# TODO continue 114
+- installa Frida (`$ pip install frida-tools`)
+
+- scarica l'ultima versione di `frida-server` da github, in base all'architettura del device
+
+- esegui `frida-server` sul device
+
+	$ adb push frida-server /data/local/tmp/
+	$ adb shell "chmod 755 /data/local/tmp/frida-server"
+	$ adb shell "su -c /data/local/tmp/frida-server &"
+
+- ottieni la lista dei processi in esecuzione
+
+	$ frida-ps -U
+	
+- ottieni la lista di tutte le app installate sul device
+
+	$ frida-ps -Uai
+
+- traccia le chiamate a librerie di basso livello (`libc.so`)
+
+	$ frida-trace -U org.lineageos.jelly -i open
+
+- interagisci con il processo
+
+	$ frida -U org.lineageos.jelly
+
+- carica uno script per il processo
+
+	$ frida -U -l on-resume.js org.lineageos.jelly
+
+Il seguente è un esempio di script per fare overwrite della funzione `onResume` della classe Activity:
+
+```
+Java.perform(function () {
+	var Activity = Java.use("android.app.Activity");
+	Activity.onResume.implementation = function () {
+		console.log("[*] onResume() got called!");
+		this.onResume();
+	};
+});
+```
+
+`Java.perform` assicura che il codice venga eseguito nel contesto della Java VM.
+Istanzia un wrapper per la classe `android.app.Activity` tramite `Java.use` e fa l'overwrite della funzione `onResume`.
+La nuova implementazione stampa informazioni sulla console e chiama il metodo `onResume` originale invocando `this.onResume`.
+
+Frida permette anche di cercare e manipolare gli oggetti istanziati sull'heap.
+Il seguente script cerca istanze di oggetti `android.view.View` e invoca il loro metodo `toString`.
+
+```
+setImmediate(function() {
+	console.log("[*] Starting script");
+	Java.perform(function () {
+		Java.choose("android.view.View", {
+			"onMatch":function(instance){
+				console.log("[*] Instance found: " + instance.toString());
+			},
+			"onComplete":function() {
+				console.log("[*] Finished heap search")
+			}
+		});
+	});
+});
+```
+
+È possibile sfruttare la reflection di Java.
+Per elencare i metodi pubblici della classe `android.view.View`, puoi creare un wrapper per questa classe in Frida e invocare `getMethod` dalla proprietà `class`.
+
+```
+Java.perform(function () {
+	var view = Java.use("android.view.View");
+	var methods = view.class.getMethods();
+	for(var i = 0; i < methods.length; i++) {
+		console.log(methods[i].toString());
+	}
+});
+```
+
+Frida offre anche delle API usabili in Python, C, NodeJS e Swift.
+
+### Magisk
+
+Magisk è un tool per il rooting dei device Android.
+Gli altri tool modificano i dati nella partizione system.
+Magisk invece non lo fa, secondo la modalità systemless.
+In questo modo le modifiche vengono nascoste alle app sensibili al rooting (es. app bancarie) e permette di usare gli aggiornamenti ufficiali Android senza dover rimuovere l'accesso root.
+
+### MobSF
+
+MoSF è un framework di pentesting di app mobile che supporta i file APK.
+
+### Objection
+
+Objection è un toolkit di esplorazione a runtime, basato su Frida.
+Permette di fare security testing su device non rooted.
+È richiesto il repackaging dell'app per iniettare il Frida gadget.
+In questo modo una volta installata l'APK, è possibile interagire con Frida.
+Fornisce anche un REPL per interagire con l'app, dando la possibilità di eseguire qualsiasi operazione eseguibile dall'app.
+
+La possibilità di eseguire analisi dinamiche avanzate su device non rooted rende Objection molto utile.
+Un'app potrebbe avere dei controlli RASP che individuano i metodi di rooting e l'injection di un Frida gadget potrebbe essere il metodo più facile per aggirare questi controlli.
+Inoltre, gli script Frida inclusi facilitano l'analisi dell'app o l'evasione dei controlli di sicurezza.
+
+Se hai già un device rooted, Objection può connettersi direttamente al Frida server in esecuzione per fornire tutte le sue funzionalità senza dover fare il repackaging dell'app.
+
+- individua il nome dell'app con `frida-ps`
+
+	$ frida-ps -Ua | grep telegram
+
+- connettiti all'app
+
+	$ objection --gadget="org.telegram.messenger" explore
+
+- tra i vari comandi puoi lanciare
+
+	# Show the different storage locations belonging to the app
+	$ env
+	# Disable popular ssl pinning methods
+	$ android sslpinning disable
+	# List items in the keystore
+	$ android keystore list
+	# Try to circumvent root detection
+	$ android root disable
+
+### radare2
+
+radare2 è un framework di reverse engineering per fare disassembling, debugging, patching e analisi di binari.
+Offre sia una command line interface che una Web UI (`-H`).
+
+- ricerca stringhe in AndroidManifest.xml
+
+	$ rafind2 -ZS permission AndroidManifest.xml
+
+- ottieni informazioni sul file binario
+
+	$ rabin2 -I my-app/classes.dex
+
+- caricare binari DEX (da qui puoi lanciare una serie di comandi per interagire dinamicamente)
+
+	$ r2 classes.dex
+
+### r2frida
+
+r2frida sfrutta sia radare2 che Frida, unendo effettivamente le capacità di reverse engineering di radare2 con il toolkit di dynamic instrumentation di Frida.
+
+## Obtaining and Extracting Apps
+
+Uno dei metodi più semplici per ottenere un APK è scaricarla dai siti che fanno da mirror.
+Tali siti non sono ufficiali e non c'è garanzia che l'app non sia stata reimpacchettata o contenga malware.
+Potresti usare APKMirror o APKPure, ma usali solo se sono l'ultima opzione.
+
+Invece il metodo raccomandato è l'estrazione dell'APK direttamente dal dispositivo.
+Puoi lanciare il comando `$ adb shell pm path <package name>` per creare l'APK sul device oppure usare APKExtractor.
+
+## Information Gathering
+
+Puoi ottenere la lista delle app installate lanciando il seguente comando:
+
+	$ adb shell pm list packages
+	
+Puoi ottenere solo le app di terze parti e il path della loro APK lanciando il seguente comando:
+
+	$ adb shell pm list packages -3 -f
+	
+Per otterenere lo stesso risultato per una specifica app:
+
+	$ adb shell pm path org.lineageos.jelly
+	
+Ottieni lo stesso risultato usando Frida:
+
+	$ frida-ps -Uai
+	
+Una volta ottenuta l'APK, puoi estrarne il contenuto usando `$ unzip my.apk`.
+Troverai:
+
+- AndroidManifest.xml
+- META-INF: contenente i metadati dell'app
+- assets
+- classes.dex: classi compilate nel formato DEX
+- lib
+- res: risorse non compilate già presenti in resources.arsc
+- resources.arsc: risorse precompilate
+
+Usando `unzip` alcuni file, come AndroidManifest.xml, non sono leggibili.
+Allora usa `apktool d`.
+
+Puoi ispezionare la directory `lib` contenuta nei file estratti dall'APK, per avere un'idea delle librerie native utilizzate.
+
+Con objection posso ottenere la lista delle directory usate dall'app una volta che è installata:
+
+	$ objection -g org.lineageos.jelly explore
+	
+Tra queste trovo:
+
+- `/data/data/[package-name]` o `/data/user/0/[package-name]`: directory dati interna
+- `/storage/emulated/0/Android/data/[package-name]` o `/sdcard/Android/data/[package-storage]`: directory dati esterna
+- `/data/app/`: path del package dell'app
+
+La directory dati interna contiene le seguenti directory:
+
+- cache: caching di dati
+- code_cache: caching del codice
+- lib: librerie native scritte in C/C++
+- shared_prefs: file XML contenente le SharedPreferences
+- files: file creati dall'app
+- databases: SQLite database generati dall'app
+
+L'app potrebbe salvare dati in `/data/data/[package-name]`.
+
+Per ottenere il log di una specifica app puoi usare il seguente comando:
+
+	$ adb logcat | grep "$(adb shell ps | grep <package-name> | awk '{print $2}')"
+
+## Setting up a Network Testing Environment
+
+\# FIXME wireshark non riceve traffico
+
+Per fare lo sniffing remoto del traffico da un device emulato, fai il pipe di `tcpdump` su `nc`:
+
+	$ adb shell tcpdump -i wlan0 -s0 -w - | nc -l -p 11111
+
+Per accedere alla porta 11111, devi fare il forwarding verso il tuo host:
+
+	$ adb forward tcp:11111 tcp:11111
+	
+Puoi poi connetterti alla porta in forward e usare Wireshark:
+
+	$ nc localhost 11111 | wireshark -k -S -i -
+
+Firebase Cloud Messaging (FCM), successore di Google Cloud Messaging (GCM), permette di scambiare messaggi tra un application server e le client app.
+Queste entità comunicano tramite il connection server.
+I downstream message (push notification) sono inviati dall'application server alle client app.
+Gli upstream message sono inviati dalle client app all'application server.
+FCM supporta HTTP (porte 8228, 5229, 5230) e XMPP (porte 5235, 5236).
+Per esempio su Mac OS X, poi configurare il port forwarding locale lanciando:
+
+```
+$ echo "
+rdr pass inet proto tcp from any to any port 5228-> 127.0.0.1 port 8080
+rdr pass inet proto tcp from any to any port 5229 -> 127.0.0.1 port 8080
+rdr pass inet proto tcp from any to any port 5230 -> 127.0.0.1 port 8080
+" | sudo pfctl -ef -
+```
+
+```
+$ echo "
+rdr pass inet proto tcp from any to any port 5235-> 127.0.0.1 port 8080
+rdr pass inet proto tcp from any to any port 5236 -> 127.0.0.1 port 8080
+" | sudo pfctl -ef -
+```
+
+L'intercepting proxy dovrà mettersi in ascolto sulla porta specificata (8080).
+Le push notification potrebbero essere cifrate tramite Capillary.
+
+### Bypass the Network Security Configuration
+
+Da Android 7.0 in avanti, la network security configuration (`network_security_config.xml`) permette alle app di personalizzare le proprie impostazioni di sicurezza della rete, indicando quali certificati di CA sono fidati dall'app.
+
+La network security configuration viene impostata in base all'attributo src: `<certificates src=["system" | "user" | "raw resource"] overridePins=["true" | "false"] />`.
+I certificati delle CA fidati dall'app possono essere di sistema o definiti dall'utente.
+Il caso "user" permette di forzare l'app a fidarsi del certificato caricato dall'utente, secondo la seguente configurazione:
+
+```
+<network-security-config>
+	<base-config>
+		<trust-anchors>
+			<certificates src="system" />
+			<certificates src="user" />
+		</trust-anchors>
+	</base-config>
+</network-security-config>
+```
+
+Per poter sfruttare la modifica:
+
+- decompila l'APK:
+
+	$ apktool d my.apk
+	
+- modifica il file `network_security_config.xml` aggiungendo `<certificates src="user" />`
+
+- ricrea l'APK
+
+	$ cd my
+	$ apktool b
+
+Se l'app adotta protezioni addizionali, come la verifica della firma, l'app potrebbe non essere più lanciabile.
+Potresti disabilitare tali controlli modificandoli o facendo l'instrumentation dinamica tramite Frida.
+Questo processo è automatizzato da [Android-CertKiller](https://github.com/51j0/Android-CertKiller).
+
+Non volendo modificare tutte le APK delle app installate sul device, è possibile forzare il device a fidarsi del certificato del proxy usando [MagiskTrustUserCerts](https://github.com/NVISO-BE/MagiskTrustUserCerts), che inserisce i certificati caricati dall'utente in quelli di sistema.
+
+Una volta impostato un intercepting proxy e aver assunto una posizione di MITM potresti non vedere ancora traffico.
+Questo potrebbe essere dovuto a due ragioni:
+l'app usa un framework come Xamarin che non usa le impostazioni proxy di Android oppure
+l'app verifica se è in uso un proxy e blocca qualsiasi comunicazione.
+Le soluzioni possibili prevedono l'uso di bettercap o iptables.
+Potresti usare un access point sotto il tuo controllo per redirigere il traffico, ma questa soluzione richiederebbe hardware aggiuntivo.
+In entrambi i casi in Burp è necessario abilitare `Support invisible proxing` in `Proxy` > `Options` > `Edit Interface`.
+
+Sul device puoi usare iptables per redirigere tutto il traffico verso l'intercepting proxy in ascolto sulla porta 8080:
+
+	 $ iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination <your-ip-addr>:8080
+
+Verifica poi lo stato di iptables:
+
+	$ iptables -t nat -L
+
+Per pulire la configurazione di iptables:
+
+	$ iptables -t nat -F
+
+In alternativa a iptables, puoi usare bettercap.
+Il tuo host deve essere connesso alla stessa rete wireless del device.
+
+	# bettercap -eval "set arp.spoof.targets <device-ip>; arp.spoof on; set arp.spoof.internal true; set arp.spoof.fullduplex true;"
+
+Oltre all'uso di iptables e bettercap è possibile usare Frida.
+Interrogando la classe `ProxyInfo` è possibile determinare se un proxy è in uso, controllando i metodi `getHost()` e `getPort()`.
+Se l'app non usa questa classe, sarà necessario decompilare l'APK e individuare la classe e i relativi metodi usati per il controllo.
+Se l'app usa semplicemente il metodo `Proxy.isProxySet()` puoi usare il seguente codice:
+
+```
+setTimeout(function(){
+	Java.perform(function (){
+		console.log("[*] Script loaded")
+		var Proxy = Java.use("<package-name>.<class-name>")
+		Proxy.isProxySet.overload().implementation = function() {
+			console.log("[*] isProxySet function invoked")
+			return false
+		}
+	});
+});
+```
 

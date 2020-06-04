@@ -20,6 +20,7 @@
 - [OMTG-DATAST-001-SHAREDPREFERENCES](./README-OMTG-DATAST-001-SHAREDPREFERENCES.md)
 - [OMTG-DATAST-001-SQLITE](./README-OMTG-DATAST-001-SQLITE.md)
 - [OMTG-DATAST-001-SQLITE-ENCRYPTED](./README-OMTG-DATAST-001-SQLITE-ENCRYPTED.md)
+- [OMTG-DATAST-002-LOGGING](./README-OMTG-DATAST-002-LOGGING.md)
 - \# TODO
 
 ## Mobile Security Testing Guide
@@ -32,7 +33,6 @@
 - [Testing Code Quality](./README-MSTG-TCQ.md)
 - [Tampering and Reverse Engineering](./README-MSTG-TRE.md)
 - [Testing User Interaction](./README-MSTG-TUI.md)
-
 - [Android Platform Overview](./README-MSTG-APO.md)
 - [Android Basic Security Testing](./README-MSTG-ABST.md)
 - \# TODO
