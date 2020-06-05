@@ -2,7 +2,7 @@
 
 > app/src/main/java/
 
-```
+```java
 String str3 = this.TAG;
 Log.e(str3, "User successfully logged in. User: " + str + " Password: " + str2);
 System.out.println("WTF, Logging Class should be used instead.");

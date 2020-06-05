@@ -2,7 +2,7 @@
 
 > app/src/main/java/sg/vp/owasp_mobile/OMTG_Android/OMTG_DATAST_001_SharedPreferences.java
 
-```
+```java
 SharedPreferences.Editor edit = getSharedPreferences("key", 1).edit();
 
 edit.putString("username", "administrator");

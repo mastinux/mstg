@@ -107,7 +107,7 @@ Di seguito sono riportati alcuni comandi utili.
 
 Il seguente è un esempio di script per fare overwrite della funzione `onResume` della classe Activity:
 
-```
+```javascript
 Java.perform(function () {
 	var Activity = Java.use("android.app.Activity");
 	Activity.onResume.implementation = function () {
@@ -124,7 +124,7 @@ La nuova implementazione stampa informazioni sulla console e chiama il metodo `o
 Frida permette anche di cercare e manipolare gli oggetti istanziati sull'heap.
 Il seguente script cerca istanze di oggetti `android.view.View` e invoca il loro metodo `toString`.
 
-```
+```javascript
 setImmediate(function() {
 	console.log("[*] Starting script");
 	Java.perform(function () {
@@ -143,7 +143,7 @@ setImmediate(function() {
 È possibile sfruttare la reflection di Java.
 Per elencare i metodi pubblici della classe `android.view.View`, puoi creare un wrapper per questa classe in Frida e invocare `getMethod` dalla proprietà `class`.
 
-```
+```javascript
 Java.perform(function () {
 	var view = Java.use("android.view.View");
 	var methods = view.class.getMethods();
@@ -190,13 +190,13 @@ Se hai già un device rooted, Objection può connettersi direttamente al Frida s
 
 - tra i vari comandi puoi lanciare
 
-	# Show the different storage locations belonging to the app
+	\# Show the different storage locations belonging to the app
 	$ env
-	# Disable popular ssl pinning methods
+	\# Disable popular ssl pinning methods
 	$ android sslpinning disable
-	# List items in the keystore
+	\# List items in the keystore
 	$ android keystore list
-	# Try to circumvent root detection
+	\# Try to circumvent root detection
 	$ android root disable
 
 ### radare2
@@ -311,7 +311,7 @@ Gli upstream message sono inviati dalle client app all'application server.
 FCM supporta HTTP (porte 8228, 5229, 5230) e XMPP (porte 5235, 5236).
 Per esempio su Mac OS X, poi configurare il port forwarding locale lanciando:
 
-```
+```sh
 $ echo "
 rdr pass inet proto tcp from any to any port 5228-> 127.0.0.1 port 8080
 rdr pass inet proto tcp from any to any port 5229 -> 127.0.0.1 port 8080
@@ -319,7 +319,7 @@ rdr pass inet proto tcp from any to any port 5230 -> 127.0.0.1 port 8080
 " | sudo pfctl -ef -
 ```
 
-```
+```sh
 $ echo "
 rdr pass inet proto tcp from any to any port 5235-> 127.0.0.1 port 8080
 rdr pass inet proto tcp from any to any port 5236 -> 127.0.0.1 port 8080
@@ -337,7 +337,7 @@ La network security configuration viene impostata in base all'attributo src: `<c
 I certificati delle CA fidati dall'app possono essere di sistema o definiti dall'utente.
 Il caso "user" permette di forzare l'app a fidarsi del certificato caricato dall'utente, secondo la seguente configurazione:
 
-```
+```xml
 <network-security-config>
 	<base-config>
 		<trust-anchors>
@@ -397,7 +397,7 @@ Interrogando la classe `ProxyInfo` è possibile determinare se un proxy è in us
 Se l'app non usa questa classe, sarà necessario decompilare l'APK e individuare la classe e i relativi metodi usati per il controllo.
 Se l'app usa semplicemente il metodo `Proxy.isProxySet()` puoi usare il seguente codice:
 
-```
+```javascript
 setTimeout(function(){
 	Java.perform(function (){
 		console.log("[*] Script loaded")

@@ -51,7 +51,7 @@ Se i permessi richiesti all'app vengono concessi, il corrispondente group ID vie
 Per esempio, nel seguente output di `id` possiamo vedere che l'app con UID 10188 appartiene al group ID 3003.
 Tale gruppo è relativo al permesso `android.permission.INTERNET`.
 
-```
+```sh
 $ id
 uid=10188(u0_a188) gid=10188(u0_a188) groups=10188(u0_a188),3003(inet),
 9997(everybody),50188(all_a188) context=u:r:untrusted_app:s0:c512,c768
@@ -104,7 +104,7 @@ Puoi creare un'APK a partire da un AAB eseguendo il seguente comando:
 
 Se vuoi creare un'APK firmata da installare su un device di test, usa:
 
-```
+```sh
 $ bundletool build-apks --bundle=/MyApp/my_app.aab --output=/MyApp/my_app.apks
 --ks=/MyApp/keystore.jks
 --ks-pass=file:/MyApp/keystore.pwd

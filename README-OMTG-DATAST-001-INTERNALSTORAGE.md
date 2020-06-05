@@ -2,7 +2,7 @@
 
 > app/src/main/sg/vp/owasp_mobile/OMTG_Android/OMTG_DATAST_001_InternalStorage.java
 
-```
+```java
 FileOutputStream fileOutputStream;
 try {
 	fileOutputStream = openFileOutput("test_file", 0);

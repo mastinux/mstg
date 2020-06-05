@@ -2,7 +2,7 @@
 
 > app/src/main/java/sg/vp/owasp_mobile/OMTG_Android/OMTG_DATAST_001_KeyStore.java
 
-```
+```java
 KeyPairGeneratorSpec keyPairGeneratorSpec = null;
 if (Build.VERSION.SDK_INT >= 18) {
 	keyPairGeneratorSpec = new KeyPairGeneratorSpec

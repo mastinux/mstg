@@ -2,7 +2,7 @@
 
 > app/src/main/java/sg/vp/owasp_mobile/OMTG_Android/OMTG_DATAST_001_SQLite_Not_Encrypted.java
 
-```
+```java
 SQLiteDatabase openOrCreateDatabase = openOrCreateDatabase("privateNotSoSecure", 0, null);
 
 openOrCreateDatabase.execSQL("CREATE TABLE IF NOT EXISTS Accounts(Username VARCHAR,Password VARCHAR);");

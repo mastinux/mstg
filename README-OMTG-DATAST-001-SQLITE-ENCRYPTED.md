@@ -2,7 +2,7 @@
 
 > app/src/main/java/sg/vp/owasp_mobile/OMTG_Android/OMTG_DATAST_001_SQLite_Encrypted.java
 
-```
+```java
 SQLiteDatabase.loadLibs(this);
 
 File databasePath = getDatabasePath("encrypted");
