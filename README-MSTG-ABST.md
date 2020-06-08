@@ -23,11 +23,15 @@ Xposed include altri script, come Inspeckage che permette di testare più a fond
 
 Per redirigere il traffico da una porta tcp dell'host a una porta tcp del device:
 
-	$ adb forward tcp:<host port> tcp:<device port>
+```sh
+$ adb forward tcp:<host port> tcp:<device port>
+```
 	
 Per redirigere il traffico in senso opposto:
 
-	$ adb reverse tcp:<device port> tcp:<host port>
+```sh
+$ adb reverse tcp:<device port> tcp:<host port>
+```
 
 ### Angr
 
@@ -81,29 +85,41 @@ Di seguito sono riportati alcuni comandi utili.
 
 - esegui `frida-server` sul device
 
-	$ adb push frida-server /data/local/tmp/
-	$ adb shell "chmod 755 /data/local/tmp/frida-server"
-	$ adb shell "su -c /data/local/tmp/frida-server &"
+```sh
+$ adb push frida-server /data/local/tmp/
+$ adb shell "chmod 755 /data/local/tmp/frida-server"
+$ adb shell "su -c /data/local/tmp/frida-server &"
+```
 
 - ottieni la lista dei processi in esecuzione
 
-	$ frida-ps -U
+```sh
+$ frida-ps -U
+```
 	
 - ottieni la lista di tutte le app installate sul device
 
-	$ frida-ps -Uai
+```sh
+$ frida-ps -Uai
+```
 
 - traccia le chiamate a librerie di basso livello (`libc.so`)
 
-	$ frida-trace -U org.lineageos.jelly -i open
+```sh
+$ frida-trace -U org.lineageos.jelly -i open
+```
 
 - interagisci con il processo
 
-	$ frida -U org.lineageos.jelly
+```sh
+$ frida -U org.lineageos.jelly
+```
 
 - carica uno script per il processo
 
-	$ frida -U -l on-resume.js org.lineageos.jelly
+```sh
+$ frida -U -l on-resume.js org.lineageos.jelly
+```
 
 Il seguente è un esempio di script per fare overwrite della funzione `onResume` della classe Activity:
 
@@ -182,11 +198,15 @@ Se hai già un device rooted, Objection può connettersi direttamente al Frida s
 
 - individua il nome dell'app con `frida-ps`
 
-	$ frida-ps -Ua | grep telegram
+```sh
+$ frida-ps -Ua | grep telegram
+```
 
 - connettiti all'app
 
-	$ objection --gadget="org.telegram.messenger" explore
+```sh
+$ objection --gadget="org.telegram.messenger" explore
+```
 
 - tra i vari comandi puoi lanciare
 
@@ -206,15 +226,21 @@ Offre sia una command line interface che una Web UI (`-H`).
 
 - ricerca stringhe in AndroidManifest.xml
 
-	$ rafind2 -ZS permission AndroidManifest.xml
+```sh
+$ rafind2 -ZS permission AndroidManifest.xml
+```
 
 - ottieni informazioni sul file binario
 
-	$ rabin2 -I my-app/classes.dex
+```sh
+$ rabin2 -I my-app/classes.dex
+```
 
 - caricare binari DEX (da qui puoi lanciare una serie di comandi per interagire dinamicamente)
 
-	$ r2 classes.dex
+```sh
+$ r2 classes.dex
+```
 
 ### r2frida
 
@@ -233,19 +259,27 @@ Puoi lanciare il comando `$ adb shell pm path <package name>` per creare l'APK s
 
 Puoi ottenere la lista delle app installate lanciando il seguente comando:
 
-	$ adb shell pm list packages
+```sh
+$ adb shell pm list packages
+```
 	
 Puoi ottenere solo le app di terze parti e il path della loro APK lanciando il seguente comando:
 
-	$ adb shell pm list packages -3 -f
+```sh
+$ adb shell pm list packages -3 -f
+```
 	
 Per otterenere lo stesso risultato per una specifica app:
 
-	$ adb shell pm path org.lineageos.jelly
+```sh
+$ adb shell pm path org.lineageos.jelly
+```
 	
 Ottieni lo stesso risultato usando Frida:
 
-	$ frida-ps -Uai
+```sh
+$ frida-ps -Uai
+```
 	
 Una volta ottenuta l'APK, puoi estrarne il contenuto usando `$ unzip my.apk`.
 Troverai:
@@ -265,7 +299,9 @@ Puoi ispezionare la directory `lib` contenuta nei file estratti dall'APK, per av
 
 Con objection posso ottenere la lista delle directory usate dall'app una volta che è installata:
 
-	$ objection -g org.lineageos.jelly explore
+```sh
+$ objection -g org.lineageos.jelly explore
+```
 	
 Tra queste trovo:
 
@@ -286,7 +322,9 @@ L'app potrebbe salvare dati in `/data/data/[package-name]`.
 
 Per ottenere il log di una specifica app puoi usare il seguente comando:
 
-	$ adb logcat | grep "$(adb shell ps | grep <package-name> | awk '{print $2}')"
+```sh
+$ adb logcat | grep "$(adb shell ps | grep <package-name> | awk '{print $2}')"
+```
 
 ## Setting up a Network Testing Environment
 
@@ -294,15 +332,21 @@ Per ottenere il log di una specifica app puoi usare il seguente comando:
 
 Per fare lo sniffing remoto del traffico da un device emulato, fai il pipe di `tcpdump` su `nc`:
 
-	$ adb shell tcpdump -i wlan0 -s0 -w - | nc -l -p 11111
+```sh
+$ adb shell tcpdump -i wlan0 -s0 -w - | nc -l -p 11111
+```
 
 Per accedere alla porta 11111, devi fare il forwarding verso il tuo host:
 
-	$ adb forward tcp:11111 tcp:11111
+```sh
+$ adb forward tcp:11111 tcp:11111
+```
 	
 Puoi poi connetterti alla porta in forward e usare Wireshark:
 
-	$ nc localhost 11111 | wireshark -k -S -i -
+```sh
+$ nc localhost 11111 | wireshark -k -S -i -
+```
 
 Firebase Cloud Messaging (FCM), successore di Google Cloud Messaging (GCM), permette di scambiare messaggi tra un application server e le client app.
 Queste entità comunicano tramite il connection server.
@@ -352,20 +396,39 @@ Per poter sfruttare la modifica:
 
 - decompila l'APK:
 
-	$ apktool d my.apk
+```sh
+$ apktool d my.apk
+```
 	
 - modifica il file `network_security_config.xml` aggiungendo `<certificates src="user" />`
 
 - ricrea l'APK
 
-	$ cd my
-	$ apktool b
+```sh
+$ cd my
+$ apktool b
+```
 
 Se l'app adotta protezioni addizionali, come la verifica della firma, l'app potrebbe non essere più lanciabile.
 Potresti disabilitare tali controlli modificandoli o facendo l'instrumentation dinamica tramite Frida.
 Questo processo è automatizzato da [Android-CertKiller](https://github.com/51j0/Android-CertKiller).
 
 Non volendo modificare tutte le APK delle app installate sul device, è possibile forzare il device a fidarsi del certificato del proxy usando [MagiskTrustUserCerts](https://github.com/NVISO-BE/MagiskTrustUserCerts), che inserisce i certificati caricati dall'utente in quelli di sistema.
+
+Per aggiungere il certificato del proxy in quelli fidati a livello di sistema
+
+```sh
+$ adb remount
+
+$ openssl x509 -inform der -in cacert.der -outform pem -out cacert.pem
+$ openssl x509 -inform pem -subject_hash_old -in cacert.pem
+$ cp cacert.pem <hash>.0
+
+$ adb push <hash>.0 /system/etc/security/cacerts
+$ adb shell chmod 644 /system/etc/security/cacerts/<hash>.0
+
+$ adb shell reboot
+```
 
 Una volta impostato un intercepting proxy e aver assunto una posizione di MITM potresti non vedere ancora traffico.
 Questo potrebbe essere dovuto a due ragioni:
@@ -377,20 +440,28 @@ In entrambi i casi in Burp è necessario abilitare `Support invisible proxing` i
 
 Sul device puoi usare iptables per redirigere tutto il traffico verso l'intercepting proxy in ascolto sulla porta 8080:
 
-	 $ iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination <your-ip-addr>:8080
+```sh
+ $ iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination <your-ip-addr>:8080
+```
 
 Verifica poi lo stato di iptables:
 
-	$ iptables -t nat -L
+```sh
+$ iptables -t nat -L
+```
 
 Per pulire la configurazione di iptables:
 
-	$ iptables -t nat -F
+```sh
+$ iptables -t nat -F
+```
 
 In alternativa a iptables, puoi usare bettercap.
 Il tuo host deve essere connesso alla stessa rete wireless del device.
 
-	# bettercap -eval "set arp.spoof.targets <device-ip>; arp.spoof on; set arp.spoof.internal true; set arp.spoof.fullduplex true;"
+```sh
+# bettercap -eval "set arp.spoof.targets <device-ip>; arp.spoof on; set arp.spoof.internal true; set arp.spoof.fullduplex true;"
+```
 
 Oltre all'uso di iptables e bettercap è possibile usare Frida.
 Interrogando la classe `ProxyInfo` è possibile determinare se un proxy è in uso, controllando i metodi `getHost()` e `getPort()`.

