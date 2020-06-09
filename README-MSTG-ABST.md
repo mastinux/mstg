@@ -210,14 +210,16 @@ $ objection --gadget="org.telegram.messenger" explore
 
 - tra i vari comandi puoi lanciare
 
-	\# Show the different storage locations belonging to the app
-	$ env
-	\# Disable popular ssl pinning methods
-	$ android sslpinning disable
-	\# List items in the keystore
-	$ android keystore list
-	\# Try to circumvent root detection
-	$ android root disable
+```sh
+# Show the different storage locations belonging to the app
+$ env
+# Disable popular ssl pinning methods
+$ android sslpinning disable
+# List items in the keystore
+$ android keystore list
+# Try to circumvent root detection
+$ android root disable
+```sh
 
 ### radare2
 

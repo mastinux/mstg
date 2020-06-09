@@ -496,7 +496,7 @@ $ dd if=backup.ab bs=1 skip=24 | python -c "import zlib,sys;sys.stdout.write(zli
 Un alternativa è Android Backup Extractor.
 
 ```sh
-$ java -jar abe.jar unpack backup.ab
+$ java -jar abe.jar unpack backup.ab backup.tar
 ```
 
 Estrai il backup dal file `tar` creato
@@ -504,8 +504,205 @@ Estrai il backup dal file `tar` creato
 ```sh
 $ tar xvf mybackup.tar
 ```
-	
-\# TODO prova backup di specifica app
 
-167
+## Finding Sensitive Information in Auto-Generated Screenshots (MSTG-STORAGE-9)
+
+Dati sensibili possono essere esposti se l'utente esegue screenshot dell'app quando questi sono visualizzati, oppure se una malicious app è in grado di catturare screenshot sul device.
+
+### Static Analysis
+
+Quando l'app va in background viene preso uno screenshot.
+Controlla che l'opzione `FLAG_SECURE` sia stata impostata.
+Diversamente l'app è vulnerabile a screen capturing.
+
+```java
+getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE,
+	WindowManager.LayoutParams.FLAG_SECURE);
+
+setContentView(R.layout.activity_main);
+```
+
+### Dynamic Analysis
+
+Naviga in una view che contiene dati sensibili e ritorna alla home del device.
+Clicca sull'app switcher per vedere lo screenshot.
+Verifica che i dati sensibli siano stati oscurati.
+
+## Checking Memory for Sensitive Data (MSTG-STORAGE-10)
+
+L'analisi della memoria potrebbe consentire l'estrazione di dati sensibili.
+L'obiettivo è verificare che i dati sensibili rimangano in memoria il più breve tempo possibile.
+Puoi fare un dump della memoria oppure usare un debugger.
+Il dumping della memoria è un processo molto error-prone dato che contiene gli output delle funzioni eseguite.
+Inoltre la ricerca di dati è fattibile se già si conosce il formato da cercare; ad esempio nel caso di valori cifrati è difficile individuarli.
+
+### Static Analysis
+
+Controlla la documentazione e identifica i componenti prima di esaminare il codice sorgente.
+Ad esempio, i dati sensibili provenienti da un backend potrebbero essere in un HTTP client, un XML parse.
+Le loro copie devono essere rimosse dalla memoria il prima possibile.
+
+La comprensione dell'architettura dell'app e il ruolo dell'archietettura nel sistema ti aiuterà a identificare le informazioni sensibili che non devono essere esposte in memoria.
+Per esempio, se l'app riceve dati da un server e li trasferisce a un altro senza alcuna elaborazione, allora questi dati possono essere cifrati per non esporli in memoria.
+
+Se l'app deve esporre dati sensibili in memoria, devi assicurarti che le loro copie siano esposte per pochissimo.
+In altre parole, i dati sensibili devono essere gestiti in modo centralizzato e tramite strutture dati mutabili primitivi.
+Il secondo requisito dà agli sviluppatori accesso diretto alla memoria.
+Assicurati che le usino per sovrascrivere i dati sensibili con dati dummy (tipicamente zeri).
+
+Sono preferibili i tipi `byte []` e `char []` rispetto a `Stirng` e `BigInteger`.
+L'uso di tipi mutabili non primitivi come `StringBuffer` e `StringBuilder` potrebbe essere accettabile.
+
+Dovresti:
+
+- provare a identificare i componenti dell'app e mappare dove i dati vengono usati
+- assicurarti che i dati sensibili siano gestiti dal minor numero di componenti possibile
+- assicurarti che i riferimenti all'oggetto siano adeguatamente rimossi una volta che l'oggetto contenente dati sensibili non è più necessario
+- assicurarti che la garbage collection sia richiesta dopo che i riferimenti sono stati rimossi
+- assicurarti che i dati sensibili siano sovrascritti una volta che non sono più necessari
+- non gestire questi dati con tipi immutabili (come `String` o `BigInteger`)
+- evita l'uso di tipi di dato non primitivi (come `StringBuilder`)
+- sovrascrivere i riferimenti prima di rimuoverli, al di fuori del metodo `finalize`
+- valutare i componenti di terze parti (librerie e framework) in base alle API pubbliche.
+Determina se le API pubbliche gestiscono i dati sensibili secondo quanto descritto in questo capitolo.
+
+Non usare strutture immutabili (come `String` e `BigInteger`) per rappresentare i secret.
+Impostarle a null non ha efficacia: il garbage collector potrebbe prenderle, ma potrebbero rimanere nell'heap.
+Tuttavia, dovresti invocare il garbage collector dopo ogni operazione critica.
+Quando copie di informazioni non sono state rimosse in modo adeguato, la tua richiesta ridurrà l'intervallo di tempo per il quale queste copie sono disponibili in memoria.
+Per rimuovere in modo adeguato informazioni sensibili dalla memoria, memorizzale in tipi di dati primitivi, come `byte []` o `char []`.
+Come descritto prima, dovresti evitare di memorizzarle in tipi di dati mutabili non primitivi.
+Assicurati che il contenuto venga sovrascritto quando non è più necessario.
+L'uso di zeri è quello più comune.
+
+```java
+byte[] secret = null;
+try{
+	//get or generate the secret, do work with it, make sure you make no local copies
+} finally {
+	if (null != secret) {
+		Arrays.fill(secret, (byte) 0);
+	}
+}
+```
+
+Ciò non garantisce tuttavia che il contenuto venga sovrascritto a run time.
+Per ottimizzare il bytecode, il compilatore analizza e decide di non sovrascrivere i dati perchè non vengono usati successivamente.
+Anche se il codice è in DEX, l'ottimizzazione potrebbe avvenire a tempo di compilazione JIT o AOT nella VM.
+
+La sovrascrittura con zeri apre la strada a scanner che cercano di identificare dati sensibili sulla base della loro gestione.
+Sarebbe più conveniente sovrascrivere le strutture con dati casuali.
+
+```java
+byte[] nonSecret = somePublicString.getBytes("ISO-8859-1");
+byte[] secret = null;
+
+try{
+	//get or generate the secret, do work with it, make sure you make no local copies
+} finally {
+	if (null != secret) {
+		for (int i = 0; i < secret.length; i++) {
+			secret[i] = nonSecret[i % nonSecret.length];
+		}
+		
+		FileOutputStream out = new FileOutputStream("/dev/null");
+		out.write(secret);
+		out.flush();
+		out.close();
+	}
+}
+```
+
+Una buona implementazione di `SecretKey` è la seguente.
+Ogni copia della chiave viene rimossa nello scope in cui viene creata.
+La copia locale viene rimossa secondo le raccomandazioni precedenti.
+
+```java
+public class SecureSecretKey implements javax.crypto.SecretKey, Destroyable {
+	private byte[] key;
+	private final String algorithm;
+	
+	/** Constructs SecureSecretKey instance out of a copy of the provided key bytes.
+	* The caller is responsible of clearing the key array provided as input.
+	* The internal copy of the key can be cleared by calling the destroy() method.
+	*/
+	public SecureSecretKey(final byte[] key, final String algorithm) {
+		this.key = key.clone();
+		this.algorithm = algorithm;
+	}
+	
+	public String getAlgorithm() {
+		return this.algorithm;
+	}
+	
+	public String getFormat() {
+		return "RAW";
+	}
+	
+	/** Returns a copy of the key.
+	* Make sure to clear the returned byte array when no longer needed.
+	*/
+	public byte[] getEncoded() {
+		if(null == key){
+			throw new NullPointerException();
+		}
+		
+		return key.clone();
+	}
+	
+	/** Overwrites the key with dummy data to ensure this copy is no longer present in memory.*/
+	public void destroy() {
+		if (isDestroyed()) {
+			return;
+		}
+		
+		byte[] nonSecret = new String("RuntimeException").getBytes("ISO-8859-1");
+		
+		for (int i = 0; i < key.length; i++) {
+			key[i] = nonSecret[i % nonSecret.length];
+		}
+		
+		FileOutputStream out = new FileOutputStream("/dev/null");
+		out.write(key);
+		out.flush();
+		out.close();
+		this.key = null;
+		System.gc();
+	}
+	
+	public boolean isDestroyed() {
+		return key == null;
+	}
+}
+```
+
+I dati sensibili inseriti dall'utente sono di solito gestiti con l'implementazione di un metodo di input custom, per il quale è necessario seguire le raccomandazioni precedenti.
+Android consente di rimuovere le informazioni da un buffer `EditText` con un `Editable.Factory` custom.
+
+```java
+ditText editText = ...; // point your variable to your EditText instance
+EditText.setEditableFactory(new Editable.Factory() {
+	public Editable newEditable(CharSequence source) {
+		... // return a new instance of a secure implementation of Editable.
+}
+});
+```
+
+Fai riferimento all'esempio di `SecureSecretKey` per un'esempio di un'implementazione di `Editable`.
+
+### Dynamic Analysis
+
+Per un'analisi rudimentale, usa i tool built-in di Android Studio.
+Li trovi nel tab Android Monitor.
+Per fare il dump della memoria, scegli il device e l'app che vuoi analizzare e clicca su Dump Java Heap.
+Viene creato un file .hprof.
+Per navigare nelle istanze della classe salvate nel memory dump, scegli il Package Tree View nel tab che mostra il file .hprof.
+Per un'analisi più avanzata usa l'Eclipse Memory Anlayzer Tool (MAT).
+Per analizzare il dump in MAT, usa `hprof-conv`, disponibile con l'Android SDK.
+
+```sh
+hprof-conv memory.hprof memory-mat.hprof
+```
+
+174
 
