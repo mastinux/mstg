@@ -27,7 +27,7 @@ Il contenuto del file è il seguente.
 
 Username e password sono memorizzati in chiaro, e `MODE_WORLD_READABLE` rende il file accessibile a tutte le app.
 
-L'SDK Android supporta il database SQLite.
+L'SDK Android supporta i database SQLite.
 Tuttavia le informazioni sensibili non vanno memorizzate in database non cifrati, come nell'esempio che segue.
 
 ```java
@@ -37,7 +37,7 @@ notSoSecure.execSQL("INSERT INTO Accounts VALUES('admin','AdminPass');");
 notSoSecure.close();
 ```
 
-Usando la libreria SQLCipher, i database SQLite posson essere cifrati con password.
+Usando la libreria SQLCipher, i database SQLite possono essere cifrati con password.
 
 ```java
 SQLiteDatabase secureDB = SQLiteDatabase.openOrCreateDatabase(database, "password123", null);
@@ -52,7 +52,7 @@ chiedere all'utente di decifrare il database con un PIN o una password quando l'
 memorizzare la password in un server e consentirne l'accesso solo tramite un servizio web (in modo tale che l'app sia usabile solo quando il device è online).
 
 Firebase offre un Real-time Database, che memorizza e sincronizza i dati con un database NoSQL cloud-based.
-I dati sono memorizzati in un JSON e sincronizzati in real-time con ogni client e restano disponibili anche se l'app va offline.
+I dati sono memorizzati in un JSON e sincronizzati in real-time con ogni client, restano disponibili anche se l'app va offline.
 Se il cloud server non è opportunamente configurato, potrebbe esporre informazioni sensibili.
 Puoi usare [FireBaseScanner](https://github.com/shivsahni/FireBaseScanner) per verificare se l'APK presenta tale problema (`$ python FirebaseScanner.py -p my.apk`).
 
@@ -73,7 +73,16 @@ Mentre i dati salvati su external storage (sia esso SD card o memoria interna de
 ### Static Analysis
 
 - controlla i permessi di lettura/scrittura su external storage in AndroidManifest.xml (es. `uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"`)
-- cerca nel codice sorgente `MODE_WORLD_READABLE `, `MODE_WORLD_WRITABLE`, `SharedPreferences`, `FileOutputStream`, `getExternal*`, `getWritableDatabase`, `getReadableDatabase`, `getCacheDir`, `getExternalCacheDirs`.
+- cerca nel codice sorgente 
+`MODE_WORLD_READABLE `, 
+`MODE_WORLD_WRITABLE`, 
+`SharedPreferences`, 
+`FileOutputStream`, 
+`getExternal*`, 
+`getWritableDatabase`, 
+`getReadableDatabase`,
+`getCacheDir`, 
+`getExternalCacheDirs`.
 
 Controllare che non siano state applicate le seguenti bad practice:
 
@@ -103,14 +112,16 @@ Le chiavi di un'implementazione solo software sono cifrate con una master key pe
 Un attaccante può accedere a tutte le chiavi memorizzate su un device rooted in `/data/misc/keystore/`.
 Dato che il pin/password del blocco schermo è usato per generare la master key, il KeyStore non è disponibile quando il device è bloccato.
 
-\# TODO prova a estrarre le chiavi dal keystore
-
 La classe KeyChain è usata per memorizzare e recuperare chiavi private e i loro corrispondenti certificati dal sistema.
 All'utente sarà richiesto di impostare un PIN o una password per blocco schermo al fine di proteggere le credenziali se viene importato qualcosa nella KeyChain.
 Qualsiasi app può accedere al materiale contenuto nella KeyChain.
 
 Assicurati che l'app utilizzi i meccanismi di KeyStore e Cipher per memorizzare in modo sicuro informazioni sensibili sul device.
-Cerca `AndroidKeystore`, `import java.security.KeyStore`, `import javax.crypto.Cipher`, `import java.security.SecureRandom`.
+Cerca 
+`AndroidKeystore`,
+`import java.security.KeyStore`, 
+`import javax.crypto.Cipher`, 
+`import java.security.SecureRandom`.
 Verifica che venga usata la funzione `store(OutputStream stream, char[] password)` per memorizzare il KeyStore con una password.
 Assicurati che la password non sia hard-coded ma fornita dall'utente.
 
@@ -132,7 +143,7 @@ Gli altri user non dovrebbero avere i permessi di accesso al file, ma potrebbero
 
 ## Testing Local Storage for Input Validation (MSTG-PLATFORM-2)
 
-Per qualsiasi data storage accessibile pubblicamente, qualsiasi processo può sovrascrivere i dati.
+Su qualsiasi data storage accessibile pubblicamente, qualsiasi processo può sovrascrivere i dati.
 È necessario fare input validation quando i dati vengono letti.
 
 ### Static Analysis
@@ -184,7 +195,11 @@ I servizi possono essere implementati tramite una libreria standalone Jar nell'A
 ### Static Analysis
 
 Controlla i permessi inseriti in AndroidManifest.xml.
-In particolare verifica se i permessi `READ_SMS`, `READ_CONTACTS`, `ACCESS_FINE_LOCATION` sono effettivamente necessari.
+In particolare verifica se i permessi 
+`READ_SMS`, 
+`READ_CONTACTS`, 
+`ACCESS_FINE_LOCATION` 
+sono effettivamente necessari.
 Tutti i dati inviati a servizi di terze parti dovrebbero essere anonimizzati.
 I dati (come l'application ID) che può far risalire all'account o alla sessione utente non dovrebbe essere inviato a terze parti.
 
@@ -214,8 +229,6 @@ Lancia l'app e inserisci del testo negli input che ricevono dati sensibili.
 Se vengono ci sono dei suggerimenti, allora la keyboard cache non è stata disabilitata per questi campi.
 
 ## Determining Whether Sensitive Stored Data Has Been Exposed via IPC Mechanisms (MSTG-STORAGE-6)
-
-\# TODO riguarda
 
 I content provider permettono di accedere e modificare dati di un'app ad altre.
 Se non sono configurati adeguatamente, possono rilevare informazioni sensibili.
@@ -258,7 +271,7 @@ ePermission="com.mwr.example.sieve.WRITE_KEYS"/>
 rocess="true" android:name=".FileBackupProvider"/>
 ```
 
-In realtà sono attivi due path (`"Keys"`, `"/Passwords"`) e il secondo non è protetto, come si vede nel codice che segue.
+In realtà sono attivi due path (`"/Keys"`, `"/Passwords"`) e il secondo non è protetto, come si vede nel codice che segue.
 
 ```java
 public Cursor query(final Uri uri, final String[] array, final String s, final String[] array2, final String s2)
@@ -287,8 +300,10 @@ master PIN: 2468
 
 Enumera la superficie d'attacco usando drozer:
 
+```sh
 	dz> run app.provider.info -a com.mwr.example.sieve
-	
+```
+
 ```
 Package: com.mwr.example.sieve
   Authority: com.mwr.example.sieve.DBContentProvider
@@ -399,7 +414,7 @@ dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Pas
 | thisismypassword | 9876 |
 ```
 
-Questo processo può essere automatizzato:
+Questo processo può essere automatizzato lanciando:
 
 ```sh
 dz> run scanner.provider.injection -a com.mwr.example.sieve
@@ -413,7 +428,7 @@ Questi content provider sono suscettibili a directory traversal.
 dz> run app.provider.download content://com.vulnerable.app.FileProvider/../../../../../../../../data/data/com.vulnerable.app/database.db /home/user/database.db
 ```
 
-Puoi automatizzare la ricerca di content provider suscettibili a directory traversal:
+Puoi automatizzare la ricerca di content provider suscettibili a directory traversal lanciando:
 
 ```sh
 dz> run scanner.provider.traversal -a com.mwr.example.sieve
@@ -545,12 +560,12 @@ Le loro copie devono essere rimosse dalla memoria il prima possibile.
 La comprensione dell'architettura dell'app e il ruolo dell'archietettura nel sistema ti aiuterà a identificare le informazioni sensibili che non devono essere esposte in memoria.
 Per esempio, se l'app riceve dati da un server e li trasferisce a un altro senza alcuna elaborazione, allora questi dati possono essere cifrati per non esporli in memoria.
 
-Se l'app deve esporre dati sensibili in memoria, devi assicurarti che le loro copie siano esposte per pochissimo.
+Se l'app deve esporre dati sensibili in memoria, devi assicurarti che le loro copie siano esposte per pochissimo tempo.
 In altre parole, i dati sensibili devono essere gestiti in modo centralizzato e tramite strutture dati mutabili primitivi.
 Il secondo requisito dà agli sviluppatori accesso diretto alla memoria.
 Assicurati che le usino per sovrascrivere i dati sensibili con dati dummy (tipicamente zeri).
 
-Sono preferibili i tipi `byte []` e `char []` rispetto a `Stirng` e `BigInteger`.
+Sono preferibili i tipi `byte []` e `char []` rispetto a `String` e `BigInteger`.
 L'uso di tipi mutabili non primitivi come `StringBuffer` e `StringBuilder` potrebbe essere accettabile.
 
 Dovresti:
@@ -566,8 +581,8 @@ Dovresti:
 - valutare i componenti di terze parti (librerie e framework) in base alle API pubbliche.
 Determina se le API pubbliche gestiscono i dati sensibili secondo quanto descritto in questo capitolo.
 
-Non usare strutture immutabili (come `String` e `BigInteger`) per rappresentare i secret.
-Impostarle a null non ha efficacia: il garbage collector potrebbe prenderle, ma potrebbero rimanere nell'heap.
+Non usare strutture immutabili (come `String` e `BigInteger`) per rappresentare i segreti.
+Impostarle a null non ha efficacia: il garbage collector potrebbe raccoglierle, ma potrebbero rimanere nell'heap.
 Tuttavia, dovresti invocare il garbage collector dopo ogni operazione critica.
 Quando copie di informazioni non sono state rimosse in modo adeguato, la tua richiesta ridurrà l'intervallo di tempo per il quale queste copie sono disponibili in memoria.
 Per rimuovere in modo adeguato informazioni sensibili dalla memoria, memorizzale in tipi di dati primitivi, come `byte []` o `char []`.
@@ -590,7 +605,7 @@ Ciò non garantisce tuttavia che il contenuto venga sovrascritto a run time.
 Per ottimizzare il bytecode, il compilatore analizza e decide di non sovrascrivere i dati perchè non vengono usati successivamente.
 Anche se il codice è in DEX, l'ottimizzazione potrebbe avvenire a tempo di compilazione JIT o AOT nella VM.
 
-La sovrascrittura con zeri apre la strada a scanner che cercano di identificare dati sensibili sulla base della loro gestione.
+La sovrascrittura con zeri favorisce gli scanner che cercano di identificare dati sensibili sulla base della loro gestione.
 Sarebbe più conveniente sovrascrivere le strutture con dati casuali.
 
 ```java
@@ -704,5 +719,42 @@ Per analizzare il dump in MAT, usa `hprof-conv`, disponibile con l'Android SDK.
 hprof-conv memory.hprof memory-mat.hprof
 ```
 
-174
+In MAT prova Histogram (stima di oggetti catturati per ogni tipo), Thread Overview (frame dei processi), Dominator Tree (dipendenze keep-alive tra gli oggetti).
+La feature Object Query Language permette di interrogare gli oggetti contenuti nel memory dump.
+Considera l'analogia: 
+classi -> tabelle, 
+oggetti -> righe, 
+campi -> colonne.
+Per selezionare tutti gli oggetti che hanno un campo password usa:
 
+```sql
+	SELECT password FROM ".*" WHERE (null != password)
+```
+
+Durante l'analisi cerca:
+
+- nomi di campi indicativi: password, pass, pin, secret, private, ...
+- pattern inidicativi (footprint RSA) in stringhe, char array, byte array
+- segreti conosciuti (numero di carta di credito inserito o authentication token ottenuto dal backend)
+
+## Testing the Device-Access-Security Policy (MSTG-STORAGE-11)
+
+Le app che elaborano o richiedono informazioni sensibili dovrebbero essere eseguire in un ambiente fidato e sicuro.
+Per creare questo ambiente, l'app può controllare:
+
+- blocco del device con PIN o password
+- versione Android OS recente
+- attivazione USB Debugging
+- device encryption
+- device rooting
+
+### Static Analysis
+
+Recupera una copia scritta della policy.
+La policy deve definire i controlli disponibili e la loro imposizione.
+Cerca le funzioni che implementano la policy e determina se può essere raggirata.
+
+### Dynamic Analysis
+
+L'analisi dinamica dipende dai controlli imposti dall'app e il loro comportamento atteso.
+Verifica che i controlli non possano essere raggirati.
