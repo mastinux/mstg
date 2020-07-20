@@ -5,9 +5,13 @@
 ```java
 FileOutputStream fileOutputStream = new FileOutputStream(
 	new File(Environment.getExternalStorageDirectory(), "password.txt"));
+
 fileOutputStream.write("L33tS3cr3t".getBytes());
+
 fileOutputStream.close();
 ```
+
+Solo i dati memorizzati all'interno di `/data/data/<package-name>` vengono rimossi durante la disinstallazione dell'app.
 
 Exploit:
 

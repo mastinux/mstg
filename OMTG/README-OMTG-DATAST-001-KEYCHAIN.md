@@ -20,5 +20,5 @@ startActivity(createInstallIntent);
 
 Exploit:
 
-- nessuno, mostra una best practice per importare un certificato nella KeyChain
-
+- il codice è esso stesso l'exploit, l'utente viene spinto a installare un certificato root (contenuto nell'app) sul suo device.
+In questo modo l'attaccante è in grado di ispezionare il traffico in uscita dal device e in entrata nel device

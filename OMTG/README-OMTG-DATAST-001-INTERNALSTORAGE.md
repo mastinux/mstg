@@ -4,13 +4,20 @@
 
 ```java
 FileOutputStream fileOutputStream;
+
 try {
+
 	fileOutputStream = openFileOutput("test_file", 0);
+
 } catch (FileNotFoundException e) {
+
 	e.printStackTrace();
 	fileOutputStream = null;
+	
 }
+
 fileOutputStream.write("Credit Card Number is 1234 4321 5678 8765".getBytes());
+
 fileOutputStream.close();
 ```
 
