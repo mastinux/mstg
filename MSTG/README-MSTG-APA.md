@@ -315,7 +315,7 @@ Bisogna usare i prepared statement per proteggersi dalle SQL Injection, ma bisog
 Tutte le funzioni dell'app che ricevono dati provenienti dalla UI dovrebbero implementare l'input validation:
 
 - per input da UI si può usare Android Saripaar v2
-- per input da IPC o URL schema, bisogna creare una funzione di validazione.
+- per input da IPC o URL scheme, bisogna creare una funzione di validazione.
 Per esempio la seguente verifica se la stringa è alfanumerica
 
 ```java
@@ -439,7 +439,7 @@ startActivity(i);
 
 ## Testing Custom URL Schemes (MSTG-PLATFORM-3)
 
-Sia Android che iOS consentono le comunicazioni tra app tramite URL schema custom.
+Sia Android che iOS consentono le comunicazioni tra app tramite URL scheme custom.
 Queste consentono alle altre app di eseguire specifiche azioni all'interno dell'app che offre l'URL schema custom.
 Le URI custom possono avere un qualsiasi prefix, e di solito definiscono un action da eseguire all'interno dell'app e i suoi parametri.
 
@@ -450,15 +450,15 @@ Ciò potrebbe portare a:
 - perdite finanziarie per la vittima
 - disclosure del numero di cellulare della vittima se i messaggi sono inviati a indirizzi predefiniti che collezionano numeri di telefono
 
-Una volta che l'URL schema è stato definito, più app possono registrarsi per gli schema disponibili.
-Per ogni app, ognuna di queste URL schema custom deve essere enumerata e le action che eseguono devono essere testate.
+Una volta che l'URL schema è stato definito, più app possono registrarsi per gli scheme disponibili.
+Per ogni app, ognuna di queste URL scheme custom deve essere enumerata e le action che eseguono devono essere testate.
 
-Le URL schema possono essere usate per deep linking, un modo molto diffuso e conveniente per lanciare un'app nativa tramite link, che non è implicitamente rischioso.
+Le URL scheme possono essere usate per deep linking, un modo molto diffuso e conveniente per lanciare un'app nativa tramite link, che non è implicitamente rischioso.
 Alternativamente, dall'API level 23 possono essere usati gli app link.
 Gli app link, in contrasto con i deep link, necessitano di un dominio in cui il link venga servito in modo da avere un digital asset link.
 Prima viene chiesto all'app di verificare l'asset link tramite `android:autoVerify="true"` nell'intentfiler.
 
-Tuttavia, i dati elaborati dall'app e che provengono dagli URL schema dovrebbero essere validati come qualsiasi content:
+Tuttavia, i dati elaborati dall'app e che provengono dalle URL scheme dovrebbero essere validati come qualsiasi content:
 
 - quando si usa un tipo persistente reflection-based per l'elaborazione dei dati, verifica la sezione "Testing Object Persistence" per Android
 - vengono usati i dati per le query? assicurati che siano query parametrizzate
@@ -467,4 +467,459 @@ Tuttavia, i dati elaborati dall'app e che provengono dagli URL schema dovrebbero
 
 ### Static Analysis
 
-221
+Verifica se vengono usate URL scheme custom.
+Puoi farlo analizzando l'AndroidManifest.xml cercando element intent-filter.
+
+```xml
+<activity android:name=".MyUriActivity">
+	<intent-filter>
+		<action android:name="android.intent.action.VIEW" />
+		<category android:name="android.intent.category.DEFAULT" />
+		<category android:name="android.intent.category.BROWSABLE" />
+		<data android:scheme="myapp" android:host="path" />
+	</intent-filter>
+</activity>
+```
+
+L'esempio precedente specifica un nuovo URL schema `myapp://`.
+La category `browsable` permette all'URI di essere aperta tramite un browser.
+
+I dati possono essere trasmessi attraverso questo nuovo schema, per esempio, la seguente URI: `myapp://path/to/what/i/want?keyOne=valueOne&keyTwo=valueTwo`.
+Il seguente codice può essere usato per recuperare i dati:
+
+```java
+Intent intent = getIntent();
+if (Intent.ACTION_VIEW.equals(intent.getAction())) {
+	Uri uri = intent.getData();
+	String valueOne = uri.getQueryParameter("keyOne");
+	String valueTwo = uri.getQueryParameter("keyTwo");
+}
+```
+
+Verifica l'uso di `toUri`, che potrebbe anche essere usato in questo contesto.
+
+### Dynamic Analysis
+
+Per enumerare le URL scheme all'interno dell'app che possono essere invocate tramite un web browser, usare il modulo Drozer `scanner.activity.browsable`:
+
+```sh
+dz> run scanner.activity.browsable -a com.google.android.apps.messaging
+Package: com.google.android.apps.messaging
+	Invocable URIs:
+		sms://
+		mms://
+	Classes:
+		com.google.android.apps.messaging.ui.conversation.LaunchConversationActivity
+```
+
+Puoi invocare un'URL schema custom con il modulo Drozer `app.activity.start`.
+
+```sh
+dz> run app.activity.start --action android.intent.action.VIEW --data-uri "sms://0123456789"
+```
+
+Quando invoca lo schema definito (`myapp://someaction/?var0=string&var1=string`), il modulo potrebbe anche essere usato per inviare dati all'app, come nell'esempio che segue:
+
+```java
+Intent intent = getIntent();
+if (Intent.ACTION_VIEW.equals(intent.getAction())) {
+	Uri uri = intent.getData();
+	String valueOne = uri.getQueryParameter("var0");
+	String valueTwo = uri.getQueryParameter("var1");
+}
+```
+
+La definizione e l'uso di URL schema possono essere rischiosi in questa situazione se i dati sono inviati alle URL scheme dall'esterno ed elaborati dall'app.
+Quindi tieni presente che i dati devono essere validati come descritto in "Testing Custom URL Schemes".
+
+## Testing for Insecure Configuration of Instant Apps (MSTG-ARCH-1, MSTGARCH-
+7)
+
+Con Google Play Instant puoi creare le Instant app.
+Un'instant app può essere lanciata direttamente da un browser o tramite il "try now" button dell'app store a partire da Android 6.0.
+Non è necessaria alcuna installazione.
+Ci sono alcune restrizioni per le instant app:
+
+- c'è un limite sulla dimensione dell'app (max 10 MB)
+- può essere usato solo un numero ristretto di permission
+
+La loro combinazione può portare a situazioni insicure, come:
+rimozione eccessiva della logica di autenticazione/autorizzazione/confidenzialità dall'app, che potrebbe portare a information leakage.
+
+Nota: le instant app necessitano di un App Bundle.
+
+### Static Analysis
+
+L'analisi statica può essere eseguita sia dopo aver fatto il reverse engineering di un'instant app scaricata o analizzando l'App Bundle.
+Quando analizzi l'App Bundle, controlla se nell'AndroidManifest.xml viene specificato `dist:module dist:instant="true"` per un modulo (per la base o per uno specifico modulo con `dist:module`).
+Poi, controlla per ogni entry point, quali sono impostati (tramite `<data android:path="<PATH/HERE>" />`).
+
+Considerando gli entry point individuati, come faresti per una qualsiasi activity, controlla:
+
+- ci sono dati elaborati dall'app che dovrebbero essere protetti? 
+Sono protetti con gli adeguati controlli?
+- le comunicazioni sono sicure?
+- se sono necessarie funzionalità aggiuntive, vengono scaricati i controlli di sicurezza corretti?
+
+### Dynamic Analysis
+
+Ci sono diversi modi per analizzare un'instant app.
+In tutti i casi, devi installare il supporto per le instant app e aggiungere l'eseguibile `ia` al tuo `$PATH`.
+A tale scopo lancia il seguente comando:
+
+```sh
+$ cd path/to/android/sdk/tools/bin && ./sdkmanager 'extras;google;instantapps'
+```
+
+Poi, aggiungi `path/to/android/sdk/extras/google/instantapps/ia` al tuo `$PATH`.
+
+Successivamente, puoi testare un'instant app localmente su un device con Android 8.1 o successivo.
+L'app può essere testata in diversi modi:
+
+- testare l'app localmente: 
+fai il deploy dell'app tramite Android Studio (e abilita la checkbox `Deploy as instant app`  nel Run/Configuration dialog) o 
+fai il deploy usando questo comando `$ ia run output-from-build-command <app-artifact>`
+- testare l'app usando la Play Console
+	- carica l'App Bundle nella Google Play Console
+	- prepara la bundle caricata per una release nella test track interna
+	- accedi tramite un account di test interno, 
+	lancia l'instant app da un link esterno o tramite il "try now" button nell'app store dall'account del tester
+
+Ora che puoi testare l'app, controlla:
+
+- se ci sono dati che necessitano di controlli di privacy e se i controlli vengono applicati
+- se tutte le comunicazioni sono sufficientemente sicure
+- se quando sono necessarie funzionalità aggiuntive, tutti i controlli di sicurezza siano scaricati
+
+## Testing for Sensitive Functionality Exposure Through IPC (MSTGPLATFORM-4)
+
+Durante l'implementazione delle mobile app, gli sviluppatori potrebbero usare tecniche tradizionali per IPC (come file condivisi o socket di rete).
+Dovrebbero essere usate le funzionalità del sistema IPC offerto dalle piattaforme mobile, dato che sono molto più mature delle tecniche tradizionali.
+L'uso dei meccanismi di IPC, senza considerare i problemi di sicurezza, potrebbe portare a information leak di informazioni sensibili.
+
+I meccanismi IPC che possono esporre dati sensibili possono essere:
+
+- binder
+- service
+- bound service
+- AIDL
+- intent
+- content provider
+
+### Static Analysis
+
+Nell'AndroidManifest.xml tutte le activity, i service e i content provider inclusi nel codice sorgente devono essere dichiarati (diversamente il sistema non li riconoscere e non li esegue).
+I broadcast receiver possono essere dichiarati nell'AndroidManifest.xml o creati dinamicamente.
+Idetifica gli elementi:
+`intent-filter`,
+`service`,
+`provider`,
+`receiver`.
+
+Un activity, un service o un content esportati possono essere acceduti da altre app.
+Ci sono due modi per definire un componente come exported.
+Il modo ovvio è impostare il tag `android:exported="true"`.
+Il secondo modo consiste nel definire un `<intent-filter>` in un component (`<activity>`, `<service>`, `<receiver>`).
+In questo modo il tag exported viene impostato automaticamente a true.
+Per impedire a tutte le altre app di interagire con il component, assicurati che `android:exported="true"` e `<intent-filter>` non siano presenti nell'AndroidManifest.xml a meno che non siano necessari.
+
+Ricorda che l'uso del tag `android:permission` limita l'accesso delle altre app al component.
+Se il tuo IPC è creato per essere accessibile alle altre app, puoi applicare una security policy con un element `<permission>` e impostare un `android:ProtectionLevel` adeguato.
+Quando si usa `android:permission` in un service, le altre app devono dichiarare il corrispondente element `<uses-permission>` nel proprio manifest per lanciare, fermare o agganciarsi al service.
+
+Per maggiori informazioni sui content provider, fai riferimento al test case "Testing Whether Stored Sensitive Data Is Exposed via IPC Mechanisms" nel capitolo "Testing Data Storage".
+
+Una volta identificata la lista dei meccanismi IPC, analizza il codice sorgente per vedere se vengono rivelate informazioni sensibili quando vengono usati questi meccanismi.
+Per esempio, i content provider possono essere usati per accedere alle informazioni del database, e i service possono essere interrogati per verificare se restituiscono dati.
+I broadcast receiver possono rivelare informazioni sensibili a seguito di interrogazione o di sniffing.
+
+Di seguito si usano le app Sieve e Android Insecure Bank come esempio di identificazione di componenti IPC vulnerabili.
+
+#### Activities
+
+Nell'app Sieve, troviamo tre activity exported:
+
+```xml
+<activity android:excludeFromRecents="true" android:label="@string/app_name" android:launchMode="singleTask" an
+droid:name=".MainLoginActivity" android:windowSoftInputMode="adjustResize|stateVisible">
+<intent-filter>
+<action android:name="android.intent.action.MAIN"/>
+<category android:name="android.intent.category.LAUNCHER"/>
+</intent-filter>
+</activity>
+<activity android:clearTaskOnLaunch="true" android:excludeFromRecents="true" android:exported="true" android:fi
+nishOnTaskLaunch="true" android:label="@string/title_activity_file_select" android:name=".FileSelectActivity"/>
+<activity android:clearTaskOnLaunch="true" android:excludeFromRecents="true" android:exported="true" android:fi
+nishOnTaskLaunch="true" android:label="@string/title_activity_pwlist" android:name=".PWList"/>
+```
+
+Analizzando l'activity `PWList.java`, vediamo che questa offre la possibilità di elencare, aggiungere e rimuovere le chiavi.
+Se la invochiamo direttamente, saremo in grado di raggirare la LoginActivity.
+Si possono trovare maggiori falle con l'analisi dinamica.
+
+#### Services
+
+Nell'app Sieve, troviamo i due service esposti, identificati da `<service>`:
+
+```xml
+<service android:exported="true" android:name=".AuthService" android:process=":remote"/>
+<service android:exported="true" android:name=".CryptoService" android:process=":remote"/>
+```
+
+Cerca nel codice sorgente la classe `android.app.Service`.
+Facendo il reverse engineering dell'app, possiamo vedere che il service `AuthService` consente il cambio della password e la protezione dell'app tramite PIN.
+
+```java
+public void handleMessage(Message msg) {
+	AuthService.this.responseHandler = msg.replyTo;
+	Bundle returnBundle = msg.obj;
+	int responseCode;
+	int returnVal;
+
+	switch (msg.what) {
+		...
+		case AuthService.MSG_SET /*6345*/:
+			if (msg.arg1 == AuthService.TYPE_KEY) /*7452*/ {
+				responseCode = 42;
+
+				if (AuthService.this.setKey(returnBundle.getString("com.mwr.example.sieve.PASSWORD"))){
+					returnVal = 0;
+				} else {
+					returnVal = 1;
+				}
+			} else if (msg.arg1 == AuthService.TYPE_PIN) {
+				responseCode = 41;
+
+				if (AuthService.this.setPin(returnBundle.getString("com.mwr.example.sieve.PIN"))) {
+					returnVal = 0;
+				} else {
+					returnVal = 1;
+				}
+			} else {
+				sendUnrecognisedMessage();
+				return;
+			}
+	}
+}
+```
+
+#### Broadcast Receivers
+
+Nell'app Android Insecure Bank, possiamo trovare un broadcast receiver identificato da `<receiver>`
+
+```xml
+<receiver android:exported="true" android:name="com.android.insecurebankv2.MyBroadCastReceiver">
+	<intent-filter>
+		<action android:name="theBroadcast"/>
+	</intent-filter>
+</receiver>
+```
+
+Cerca nel codice sorgente stringhe del tipo 
+`sendBroadcast`, 
+`sendOrderedBroadcast` e 
+`sendStickyBroadcast`.
+Assicurati che l'app non invii alcun dato sensibile.
+
+Se un intent inviato o ricevuto solo all'intendo dell'app, si può usare un `LocalBroadcastManager` per impedire alle altre app di ricevere il messaggio broadcast.
+In questo modo si riduce il rischio di rivelare informazioni sensibili.
+
+Per capire meglio a quale scopo il receiver è stato creato, è necessario proseguire con l'analisi statica e cercare la classe `android.content.BroadcastReceiver` e il metodo `registerReceiver`, che sono usati per creare dinamicamente i receiver.
+
+Il seguente estratto di codice sorgente dell'app mostra che il broadcast receiver scatena l'invio di un SMS contenente la password utente decifrata.
+
+```java
+public class MyBroadCastReceiver extends BroadcastReceiver {
+	String usernameBase64ByteString;
+	public static final String MYPREFS = "mySharedPreferences";
+
+	@Override
+	public void onReceive(Context context, Intent intent) {
+		// TODO Auto-generated method stub
+		String phn = intent.getStringExtra("phonenumber");
+		String newpass = intent.getStringExtra("newpass");
+
+		if (phn != null) {
+			try {
+				SharedPreferences settings = context.getSharedPreferences(MYPREFS, Context.MODE_WORLD_READABLE);
+				final String username = settings.getString("EncryptedUsername", null);
+				byte[] usernameBase64Byte = Base64.decode(username, Base64.DEFAULT);
+				usernameBase64ByteString = new String(usernameBase64Byte, "UTF-8");
+				final String password = settings.getString("superSecurePassword", null);
+				CryptoClass crypt = new CryptoClass();
+				String decryptedPassword = crypt.aesDeccryptedString(password);
+				String textPhoneno = phn.toString();
+				String textMessage = "Updated Password from: "+decryptedPassword+" to: "+newpass;
+				SmsManager smsManager = SmsManager.getDefault();
+				System.out.println("For the changepassword - phonenumber: "+textPhoneno+" password is: "+textMessage);
+
+				smsManager.sendTextMessage(textPhoneno, null, textMessage, null, null);
+			}
+		}
+	}
+}
+```
+
+I broadcast receivers dovrebbero usare l'attributo `android:permission`;
+diversamente possono essere invocati dalle altre app.
+Puoi usare `Context.sendBroadcast(intent, receiverPermission)` per specificare quali permission un receiver deve avere per ricevere il messaggio broadcast.
+Puoi anche impostare un application package name specifico per limitare i componenti che possono accedere a questo intent.
+Se lasciato al valore di default (null), verranno considerati tutti i componenti di tutte le app.
+Se non-null, l'intent può consentire solo i component del particolare application package.
+
+### Dynamic Analysis
+
+Puoi enumerare i component di IPC con Drozer.
+Per elencare tutti i component di IPC exported, usa il modulo `app.package.attacksurface`
+
+```sh
+dz> run app.package.attacksurface com.mwr.example.sieve
+	Attack Surface:
+		3 activities exported
+		0 broadcast receivers exported
+		2 content providers exported
+		2 services exported
+		is debuggable
+```
+
+#### Content Providers
+
+L'app Sieve implementa un content provider vulnerabile.
+Per elencare i content provider esportati dall'app Sieve, esegui il seguente comando:
+
+```sh
+dz> run app.provider.finduri com.mwr.example.sieve
+Scanning com.mwr.example.sieve...
+content://com.mwr.example.sieve.DBContentProvider/
+content://com.mwr.example.sieve.FileBackupProvider/
+content://com.mwr.example.sieve.DBContentProvider
+content://com.mwr.example.sieve.DBContentProvider/Passwords/
+content://com.mwr.example.sieve.DBContentProvider/Keys/
+content://com.mwr.example.sieve.FileBackupProvider
+content://com.mwr.example.sieve.DBContentProvider/Passwords
+content://com.mwr.example.sieve.DBContentProvider/Keys
+```
+
+I content provider con nomi come "password"e "keys" sono i primi sospettati per il leak di informazioni sensibili.
+
+```sh
+dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Keys
+Permission Denial: reading com.mwr.example.sieve.DBContentProvider 
+uri content://com.mwr.example.sieve.DBContentProvider/Keys 
+from pid=4268, uid=10054 
+requires com.mwr.example.sieve.READ_KEYS, or grantUriPermission()
+```
+
+```sh
+dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Keys/
+| Password | pin |
+| SuperPassword1234 | 1234 |
+```
+
+Questo content provider può essere acceduto senza permessi.
+
+```sh
+dz> run app.provider.update content://com.mwr.example.sieve.DBContentProvider/Keys/ --selection "pin=1234" --st
+ring Password "newpassword"
+dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Keys/
+| Password | pin |
+| newpassword | 1234 |
+```
+
+#### Activities
+
+Per elencare le activity esportate da un'app, usa il modulo `app.activity.info`:
+
+```sh
+dz> run app.activity.info -a com.mwr.example.sieve
+Package: com.mwr.example.sieve
+	com.mwr.example.sieve.FileSelectActivity
+		Permission: null
+	com.mwr.example.sieve.MainLoginActivity
+		Permission: null
+	com.mwr.example.sieve.PWList
+		Permission: null
+```
+
+Enumerando le activity dell'app Sieve si capisce che l'activity `com.mwr.example.sieve.PWList` è esportata senza richiedere alcuna permission.
+Per lanciare questa activity è possibile usare il modulo `app.activity.start`
+
+```sh
+dz> run app.activity.start --component com.mwr.example.sieve com.mwr.example.sieve.PWList
+```
+
+Dato che in questo esempio l'activity è invocata direttamente, il login form viene raggirato, e i dati contenuti nel password manager possono essere acceduti.
+
+#### Services
+
+I service possono essere enumerati col modulo Drozer `app.service.info`
+
+```sh
+dz> run app.service.info -a com.mwr.example.sieve
+Package: com.mwr.example.sieve
+	com.mwr.example.sieve.AuthService
+		Permission: null
+	com.mwr.example.sieve.CryptoService
+		Permission: null
+```
+
+Per comunicare con un service, è prima necessario identificare gli input richiesti tramite analisi statica.
+
+Dato che questo service è exported, puoi usare il modulo `app.service.send` per comunicare con il service e cambiare la password memorizzata nell'app target
+
+```sh
+dz> run app.service.send com.mwr.example.sieve com.mwr.example.sieve.AuthService --msg 6345 7452 1 --extra string com.mwr.example.sieve.PASSWORD "abcdabcdabcdabcd" --bundle-as-obj
+Got a reply from com.mwr.example.sieve/com.mwr.example.sieve.AuthService:
+	what: 4
+	arg1: 42
+	arg2: 0
+	Empty
+```
+
+#### Broadcast Receiver
+
+I broadcast possono essere enumerati tramite il modulo Drozer `app.broadcast.info`
+
+```sh
+dz> run app.broadcast.info -a com.android.insecurebankv2
+Package: com.android.insecurebankv2
+	com.android.insecurebankv2.MyBroadCastReceiver
+		Permission: null
+```
+
+Nell'app Android Insecure Bank, un broadcast receiver viene esportato senza richiedere alcuna permission, facendo intuire che è possibile formulare un intent per scatenare il broadcast receiver.
+Quando si testano i broadcast receiver, è necessario applicare anche l'analisi statica per capire le funzionalità del broadcast receiver.
+
+Col modulo Drozer `app.broadcast.send`, possiamo formulare un intent per scatenare il broadcast receiver e inviare la password al numero di telefono sotto il nostro controllo 
+
+```sh
+dz> run app.broadcast.send --action theBroadcast --extra string phonenumber 07123456789 --extra string newpass 12345
+```
+
+Così, il seguente SMS viene inviato:
+
+```sh
+Updated Password from: SecretPassword@ to: 12345
+```
+
+#### Sniffing intents
+
+Se un'app invia intent senza specificare una permission o un package di destinazione, gli intent possono essere monitorati dalle altre app in esecuzione sul device.
+
+Per registrare un broadcast receiver in modo che catturi gli intent, usa il modulo Drozer `app.broadcast.sniff` e specifica l'action da monitorare
+
+```sh
+dz> run app.broadcast.sniff --action theBroadcast
+[*] Broadcast receiver registered to sniff matching intents
+Android Platform APIs
+[*] Output is updated once a second. Press Control+C to exit.
+
+Action: theBroadcast
+Raw: Intent { act=theBroadcast flg=0x10 (has extras) }
+Extra: phonenumber=07123456789 (java.lang.String)
+Extra: newpass=12345 (java.lang.String)
+```
+
+229
+
+TODO PROVA I COMANDI DI DYNAMIC ANALYSIS
