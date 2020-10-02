@@ -14,10 +14,6 @@
 
 > hints can be found here https://github.com/OWASP/MSTG-Hacking-Playground/wiki/Android-App
 
-
-
-
-
 - [OMTG-DATAST-001-BADENCRYPTION](./OMTG/README-OMTG-DATAST-001-BADENCRYPTION.md)
 - [OMTG-DATAST-001-KEYCHAIN](./OMTG/README-OMTG-DATAST-001-KEYCHAIN.md)
 - [OMTG-DATAST-001-KEYSTORE](./OMTG/README-OMTG-DATAST-001-KEYSTORE.md) \# TODO
@@ -37,13 +33,6 @@
 
 
 
-
-
-
-
-
-
-
 ## Mobile Security Testing Guide
 
 > https://github.com/OWASP/owasp-mstg/releases/download/1.1.3-excel/MSTG-EN.pdf
@@ -54,6 +43,7 @@
 - [Testing Code Quality](./MSTG/README-MSTG-TCQ.md)
 - [Tampering and Reverse Engineering](./MSTG/README-MSTG-TRE.md)
 - [Testing User Interaction](./MSTG/README-MSTG-TUI.md)
+
 - [Android Platform Overview](./MSTG/README-MSTG-APO.md)
 - [Android Basic Security Testing](./MSTG/README-MSTG-ABST.md)
 - [Android Cryptographic APIs](./MSTG/README-MSTG-ACA.md)

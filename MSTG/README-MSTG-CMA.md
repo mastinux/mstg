@@ -11,16 +11,17 @@ generatori di numeri casuali (come Dual_EC_DRBG, SHA1PRNG).
 Assicurati che:
 
 - gli algoritmi di cifratura siano aggiornati e in linea con gli standard industriali.
-Quelli insicuri vanno segnalati e dovrebbero essere rimossi dall'app e dal server.
-- le lunghezze delle chiavi siano in linea con gli standard industriali e forniscano protezione per un sufficiente intervallo di tempo.
-- i contesti crittografici non vadano mischiati: non si firma con la chiave pubblica, oppure non uso una coppia di chiavi già usata per la firma per fare cifratura.
+Quelli insicuri vanno segnalati e dovrebbero essere rimossi dall'app e dal server
+- le lunghezze delle chiavi siano in linea con gli standard industriali e forniscano protezione per un sufficiente intervallo di tempo
+- i contesti crittografici non vadano mischiati: 
+non si firma con la chiave pubblica, oppure non uso una coppia di chiavi già usata per la firma per fare cifratura
 - i parametri crittografici siano ben definiti.
 Tra questi rientrano:
 il salt crittografico dovrebbe essere almeno della stessa lunghezza dell'output della funzione di hash,
 la password derivation function e l'iteration count dovrebbero essere ragionevoli,
 gli IV devono essere casuali e unici,
 usare i modi di cifratura a blocchi in base alle esigenze,
-applicare un'adeguata gestione delle chiavi.
+applicare un'adeguata gestione delle chiavi
 
 I seguenti algoritmi sono consigliati:
 
@@ -57,14 +58,14 @@ Le chiavi segrete devono essere memorizzate nel secure device storage quando si 
 ### Weak Key Generation Functions
 
 Assicurati che le password non siano passate direttamente alle funzioni di cifratura.
-Invece, la password ricevuta dall'utente dovrebbe essere passata in una KDF per creare una chiave crittografica.
+Infatti, la password ricevuta dall'utente dovrebbe essere passata in una KDF per creare una chiave crittografica.
 Scegli un'iteration count appropriato quando usi le password derivation function.
 
 ### Custom Implementations of Cryptography
 
 Ispeziona tutti i metodi crittografici usati nel codice sorgente, specialmente quelli che vengono applicati direttamente ai dati sensibili.
 Tutte le operazioni crittografiche dovrebbero usare API crittografiche standard per Android e iOS.
-Qualsiasi operazione crittografica che non invoca routine standard da provider conosciuti dovrebbe essere analizzata attentamente.
+Qualsiasi operazione crittografica che non invochi routine standard da provider conosciuti dovrebbe essere analizzata attentamente.
 Fai attenzione agli algoritmi standard che sono stati modificati.
 
 In tutte le implementazioni crittografiche, devi assicurarti che:
@@ -73,7 +74,7 @@ lo stato interno dell'operazione di cifratura sia rimossa dalla memoria il prima
 
 ### Inadequate AES Configuration
 
-Verifica che con AES non venga usato ECB ma CBC.
+Verifica che AES non venga usato secondo ECB ma secondo CBC.
 Si raccomanda l'uso di un modo che protegga anche l'integrità dei dati memorizzati, come Galois/Counter Mode (GCM).
 Questo è obbligatorio in TLSv1.2, e quindi disponibile per tutte le moderne piattaforme.
 
@@ -81,13 +82,12 @@ Assicurati che l'IV sia generato usando un random number generator crittografica
 
 ### Protecting Keys in Memory
 
-Assicurati che tutte le azioni crittografiche e le chiavi restino nel Trusted Execution Environment (Keystore di Android) o Secure Enclave (Keychain).
+Assicurati che tutte le operazioni crittografiche e le chiavi restino nel Trusted Execution Environment (Keystore di Android) o Secure Enclave (Keychain).
 Se le chiavi sono necessarie al di fuori del TEE/SE, assicurati di offuscarle/cifrarle e deoffuscarle/decifrarle solo quando devi usarle.
-Ciò significa: sovrascrivi la struttura in memoria e tieni in mente che molti dei tipi Immutable in Android (es. BigInteger e String) restano nell'heap.
+Ciò significa: sovrascrivi la struttura in memoria e tieni presente che molti dei tipi Immutable in Android (es. BigInteger e String) restano nell'heap.
 
 Data la facilità nel fare il dump della memoria, non condividere mai la stessa chiave tra account e device diversi, ad eccezione di chiavi pubbliche usate per la verifica della firma o cifratura.
 
 ### Protecting Keys in Transport
 
 Assicurati che venga utilizzata la crittografia asimmetrica quando le chiavi vengono trasferite da un device all'altro o dall'app al back-end.
-

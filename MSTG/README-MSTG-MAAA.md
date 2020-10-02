@@ -9,11 +9,11 @@ L'autenticazione può essere basata su uno o più dei seguenti fattori:
 L'autenticazione username/password (combinata con una password policy ragionevole) è generalmente considerata sufficiente per app che non gestiscono dati troppo sensibili.
 Per app sensibili è opportuno aggiungere un secondo fattore di autenticazione.
 
-Per app non critiche, il MASVS presenta i seguenti requisiti:
+Per app non critiche, il Mobile Application Security Verification Standard (MASVS) presenta i seguenti requisiti:
 
 - se l'app fornisce accesso remoto agli utenti, è necesaria almeno l'autenticazione con username/password
 - esiste una password policy e viene imposta sull'endpoint remoto
-- l'endpoint remoto implementa un lock temporaneo dell'account, quando credenziali di autenticazione errate sono immesse in un breve lasso di tempo
+- l'endpoint remoto implementa un lock temporaneo dell'account, quando credenziali di autenticazione errate sono inserite in un breve lasso di tempo
 
 Per app critiche, il MASVS aggiunge i seguenti requisiti:
 
@@ -23,11 +23,11 @@ Per app critiche, il MASVS aggiunge i seguenti requisiti:
 
 ## Stateful vs. Stateless Authentication
 
-Con l'**autenticazione stateful**, un session id unico è generato quando l'utente accede.
+Con l'autenticazione stateful, quando l'utente accede viene generato un session id unico.
 Nelle richieste successive questo session id è usato come riferimento ai dati dell'utente memorizzati sul server.
 Il session id è opaco, non contiene alcun dato dell'utente.
 
-Con l'**autenticazione stateless**, tutte le informazioni che identificano l'utente sono memorizzate in un token mantenuto sul client.
+Con l'autenticazione stateless, tutte le informazioni che identificano l'utente sono memorizzate in un token mantenuto sul client.
 Il token può essere passato a qualsiasi server o micro servizio, eliminando la necessità di mantenere lo stato della sessione sul server.
 L'autenticazione stateless è spesso gestita tramite un authorization server, che produce, firma, e opzionalmente cifra il token dopo l'accesso dell'utente.
 
@@ -36,7 +36,10 @@ migliora la scalabilità e le performance eliminando la necessità di memorizzar
 i token permettono agli sviluppatori di sdoppiare l'autenticazione dall'app, infatti i token sono generati dall'authorization server e lo schema di autenticazione può essere cambiato facilmente.
 
 Gli schemi di autenticazione sono a volte supportati dall'autenticazione contestuale passiva, che può sfruttare:
-geolocalizzazione, indirizzo IP, orario, dispositivo usato.
+geolocalizzazione, 
+indirizzo IP, 
+orario, 
+dispositivo usato.
 Il constesto dell'utente viene confrontato con i dati precedentemente memorizzati per identificare anomalie che potrebbero indicare account compromessi o potenziali truffe.
 
 ## Verifying that Appropriate Authentication is in Place (MSTG-ARCH-2 and MSTG-AUTH-1)
@@ -58,11 +61,11 @@ Identifica tutte le funzioni relative alla password nel codice sorgente e assicu
 
 Verifica se il codice sorgente presenta una procedura di throttling: 
 un contatore per tentativi di login effettuati in un periodo di tempo ridotto per un dato username e un dato metodo,
-per impedire ulteriori tentativi di login dopo che una soglia è stata raggiunta.
+al fine di impedire ulteriori tentativi di login dopo che una soglia è stata raggiunta.
 In seguito a un login corretto, il contatore va resettato.
 Cerca di seguire le seguenti best practice:
 
-- dopo pochi tentativi di login errati, l'account obiettivo dovrebbe essere bloccato
+- dopo pochi tentativi di login errati, l'account dovrebbe essere bloccato
 - di solito si usa un blocco di 5 minuti
 - i controlli vanno effettuati lato server
 - i tentativi di login errati devono essere collegati all'account e non alla particolare sessione
@@ -86,7 +89,7 @@ Assicurati che:
 - il server verifichi il session id quando l'utente prova ad accedere a elementi applicativi privilegiati
 - la sessione è terminata lato server e le informazioni della sessione vengono eliminate nell'app, dopo un certo time out o quando l'utente esegue il log out
 
-L'autenticazione non dovrebbe essere implementata da zero ma costruita su framework già esistenti.
+L'autenticazione non dovrebbe essere implementata da zero ma usando framework già esistenti.
 
 ## Testing Session Timeout (MSTG-AUTH-7)
 
@@ -131,7 +134,7 @@ Di solito si usa username/password per il primo fattore e uno dei seguenti per i
 
 La seconda autenticazione può essere eseguita al login o nel momento in cui l'utente cerca di eseguire operazioni più sensibili (es. bonifico).
 
-Dal 2016 il NIST consiglia di valutare autenticatori alternativi all'OTP via SMS. Le possibili minacce derivanti dal suo utilizzo sono:
+Dal 2016 il NIST consiglia optare per autenticatori alternativi all'OTP via SMS. Le possibili minacce derivanti dal suo utilizzo sono:
 intercettazione wireless (l'attaccante può intercettare gli SMS sfruttando femtocelle e altre vulnerabilità),
 trojan (inoltra il testo dell'SMS a un altro numero o backend),
 attacco SIM SWAP (l'attaccante chiamando la compagnia telefonica o lavorando presso essa è in gradi di trasferire il numero della vittima su un'altra SIM),
@@ -139,18 +142,18 @@ attacco Verification Code Forwarding (attacco di social engineering che sfrutta 
 segreteria telefonica (in alcuni casi se l'OTP non viene usato, viene registrato un messaggio nella segreteria telefonica, l'attaccante compromettendola può avere accesso all'account della vittima).
 
 Per mitigare queste minacce è possibile:
-indicare le azioni da fare se l'OTP non è stato richiesto e indicare che l'azienda non chiederà mai di inoltrere password o codici;
+indicare le azioni da fare se l'OTP non è stato richiesto e indicare che l'azienda non chiederà mai di inoltrare password o codici;
 inviare l'OTP su canali dedicati, quindi applicazioni usate solo per questa funzione e non accessibili ad altre;
 applicare un alto livello di entropia nella generazione dell'OTP;
-se l'utente preferisce ricevere una chiamata non lasciare l'OTP nella segreteria telefonica.
+se l'utente preferisce ricevere una chiamata non registrare l'OTP nella segreteria telefonica.
 
-La crittografia asimmetrica è il miglior metodo per implementare firma delle transazioni.
-L'app genera una coppia di chiavi quando l'utente accede e registra la chiave pubblica sul back end.
+La crittografia asimmetrica è il miglior metodo per implementare la firma delle transazioni.
+Quando l'utente accede, l'app genera una coppia di chiavi e registra la chiave pubblica sul back-end.
 La chiave privata è memorizzata in modo sicuro nel KeyStore (Android) o nella KeyChain (iOS).
-Per autorizzare una transazione, il back end invia una push notification contenente i dati della transazione.
+Per autorizzare una transazione, il back-end invia una push notification contenente i dati della transazione.
 L'utente conferma o nega la transazione.
 Dopo la conferma, l'utente deve sbloccare la Keychain (inserendo un PIN o le impronte digitali), e i dati sono firmati con la chiave privata.
-La transazione firmata è iniviata al server, che verifica la firma con la chiave pubblica dell'utente.
+La transazione firmata è inviata al server, che verifica la firma con la chiave pubblica dell'utente.
 
 ### Static Analysis
 
@@ -166,21 +169,21 @@ Riesegui le richieste che richiedeono la 2FA usando un token o session id che no
 Se l'endpoint risponde allora i controlli di autenticazione non sono stati implementati adeguatamente.
 
 Per verifacare la protezione da brute force contro l'OTP, invia più richieste con OTP casuali all'endpoint e infine quello corretto.
-Se viene accettato l'implementazione è vulnerabile e bruteforce.
+Se viene accettato l'implementazione è vulnerabile a bruteforce.
 Il numero massimo di tentativi dovrebbe essere 3.
 
 ## Testing Stateless (Token-Based) Authentication (MSTG-AUTH-3)
 
-L'autenticazione stateless viene implementata inviando un token firmata in ogni richiesta.
+L'autenticazione stateless viene implementata inviando un token firmato in ogni richiesta.
 Il formato del token maggiormente utilizzato è il JSON Web Token (JWT).
 Il singolo token può memorizzare lo stato completo della sessione evitando che il server lo mantenga.
 Il JWT è composto da tre parti base64-encoded separate da punto:
 
 - header: `{"alg":"HS256","typ":"JWT"}`, indica l'algoritmo di hashing e il tipo di token
 - payload: `{"sub":"1234567890","name":"John Doe","admin":true}`, contiene i dati utili
-- signature: `HMACSHA256(base64UrleEncode(header) + "." + base64UrlEncode(payload), secret)`, creata applicando l'algoritmo di hashing indicato nell'header sul payload encoded usando una chiave segreta
+- signature: `HMACSHA256(base64UrleEncode(header) + "." + base64UrlEncode(payload), secret)`, creata applicando l'algoritmo di hashing indicato nell'header sul payload codificato, usando una chiave segreta
 
-La chiave segreta è condivisa tra il server di backend e l'authentication server, infatti non è conosciuta dal client.
+La chiave segreta è condivisa tra il server di backend e l'authentication server, non è conosciuta dal client.
 Questo permette di verificare che il token sia stato ottenuto da un servizio di autenticazione legittimo.
 Ciò impedisce anche al client di modificare il contenuto del payload.
 
@@ -193,7 +196,7 @@ Verifica che l'implementazione aderisca alle best practice del JWT:
 - verifica dove sono la chiave privata di firma o la chiave segreta HMAC.
 Dovrebbero essere sul server e non dovrebbero mai essere condivise col client
 - verifica che non ci siano informazioni sensibili nel payload del JWT
-Se questi sono necessari, assicurati che siano cifrati.
+Se questi sono necessarie, assicurati che siano cifrate.
 - assicurati che i replay attack siano evitati utilizzando un JWT ID (`jti`)
 - verifica che i token siano memorizzati in modo sicuro sul dispositivo (KeyStore o KeyChain)
 
@@ -209,7 +212,7 @@ Il secondo serve a ottenere il primo, ogni volta che il primo scade.
 
 Verifica le seguenti vulnerabilità sull'uso del JWT:
 
-- individua la locazione di archiviazione sul dispositivo
+- individua dove viene memorizzato sul dispositivo
 - prova a fare il bruteforcing della chiave segreta tramite tool offline ( [jwtbrute](https://github.com/jmaxxz/jwtbrute), [crackjwt](https://github.com/Sjord/jwtcrack/blob/master/crackjwt.py))
 - decodifica il payload e verifica se le informazioni presenti sono sensibili
 - il server di backend può essere configurato per verificare la firma tramite chiavi asimmetriche, si aspetta quindi di ricevere un token firmato con la chiave privata e di verificarlo con la chiave pubblica.
@@ -226,7 +229,7 @@ ottenere i permessi dall'utente per accedere a servizi online usando il suo acco
 autenticarsi su un servizio online per conto dell'utente,
 gestire gli errori di autenticazione.
 
-I ruodi definiti da OAuth 2.0 sono:
+I ruoli definiti da OAuth 2.0 sono:
 resource owner (proprietario dell'account),
 client (app che vuole accedere tramite l'account dell'utente con un access token),
 resource server (server che ospita l'account dell'utente),
@@ -257,7 +260,8 @@ rendi sicura la trasmissione delle credenziali con metodi a livello di trasporto
 mantieni i token di accesso in RAM;
 i token di accesso dovrebbero essere trasmessi su connessioni cifrate;
 riduci lo scope e la durata dei token di accesso quando la confidenzialità end-to-end non può essere garantita o il token fornisce accesso a informazioni o transazioni sensibili;
-ricorda che un attaccante che ha rubato un token ha accesso al suo scope e a tutte le risorse ad esso associate se l'app lo usa come mero token senza aver modo di identificare l'identità del client;
+ricorda che un attaccante che ha rubato un token ha accesso al suo scope e a tutte le risorse ad esso associate 
+se l'app lo usa come mero token senza aver modo di identificare l'identità del client;
 memorizza i refresh token in un secure local storage
 
 L'autenticazione OAuth2 può essere eseguita sfruttando un user agent esterno (es. Chrome) o averla embedded nell'app stessa (es. libreria di autenticazione).
@@ -285,7 +289,6 @@ L'utente può segnalare attività sospette e bloccare il dispositivo usato nella
 In tutti i casi, dovresti verificare se i diversi dispositivi sono identificati correttamente.
 Quindi il collegamento tra l'app e il dispositivo effettivo dovrebbe essere testato.
 
-Infine, il blocco dei dispositivi dovrebbe essere testato, bloccano un'istanza registrata dell'app e verificando se non è più consentito autenticarsi.
+Infine, il blocco dei dispositivi dovrebbe essere testato, bloccando un'istanza registrata dell'app e verificando se non è più consentito autenticarsi.
 Se l'app richiede protezione a livello 2, può essere una buona idea avvertire l'utente anche prima dell'autenticazione su un nuovo dispositivo.
 Invece avverti l'utente quando una seconda istanza dell'app viene registrata.
-

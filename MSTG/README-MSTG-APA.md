@@ -920,6 +920,561 @@ Extra: phonenumber=07123456789 (java.lang.String)
 Extra: newpass=12345 (java.lang.String)
 ```
 
-229
+## Testing JavaScript Execution in WebViews (MSTG-PLATFORM-5)
 
-TODO PROVA I COMANDI DI DYNAMIC ANALYSIS
+JavaScript può essere iniettato nelle web app tramite reflected, stored o DOM-based Cross-Site Scripting (XSS).
+Le app mobile sono eseguite in sandbox e non hanno queste vulnerabilità quando sono implementate nativamente.
+Tuttavia, le WebView potrebbero essere parte di un'app nativa per consentire il rendering di pagine web.
+In Android, le WebView usano il rendering engine WebKit per mostrare le pagine web, ma le pagine sono ridotte alle funzioni minime, per esempio, non hanno la barra degli indirizzi.
+Se l'implementazione di WebView non è accurata e permette l'uso di JavaScript, questo può essere usato per attaccare l'app e accedere ai suoi dati.
+
+### Static Analysis
+
+Il codice sorgente va controllato per l'uso e l'implementazione della classe WebView.
+Per creare e usare una WebView, è necessario creare un'istanza della classe WebView.
+
+```java
+WebView webview = new WebView(this);
+setContentView(webview);
+webview.loadUrl("https://www.owasp.org/");
+```
+
+Si possono applicare diverse impostazioni alla WebView (per esempio attivare/disattivare JavaScript).
+JavaScript è disattivato di default per le WebView e deve essere abilitato explicitamente.
+Cerca il metodo `setJavaScriptEnabled` per verificare l'attivazione di JavaScript.
+
+```java
+webview.getSettings().setJavaScriptEnabled(true);
+```
+
+Ciò permette a WebView di interpretare JavaScript.
+Dovrebbe essere attivato solo se necessario per ridurre la superficie d'attacco dell'app.
+Se JavaScript è necessario, assicurati che:
+
+- le comunicazioni con gli endpoint si appoggi sempre su HTTPS (o altri protocolli cifrati) per proteggere HTML e JavaScript dalle modifiche durante la trasmissione
+- JavaScript e HTML siano caricati localmente dalla directory dati dell'app o solo da un web server fidato
+
+Per rimuovere tutto il codice sorgente JavaScript e i dati memorizzati localmente, pulisci la cache di WebView con `clearCache` quando l'app viene chiusa.
+
+### Dynamic Analysis
+
+L'analisi dinamica dipende dalle condizioni operative.
+Ci sono diversi modi per iniettare JavaScript nella WebView dell'app:
+
+- le vulnerabilità di Stored XSS in un endpoint;
+l'exploit verrà inviato alla WebView dell'app quando l'utente naviga nella pagina vulnerabile
+- l'attaccante assume una posizione di MITM e modifica la risposta iniettando JavaScript
+- modifica di un malware con file locali che sono caricati dalla WebView
+
+Per far fronte a questi vettori di attacco, verifica i seguenti punti:
+
+- tutte le funzioni offerte dagli endpoint dovrebbero non essere vulnerabili a stored XSS
+- solo i file che sono nella directory dati dell'app dovrebbero essere renderizzati in una WebView (guarda il test case "Testing for Local File Inclusion in WebViews")
+- la comunicazione HTTPS deve essere implementata secondo le best practice per evitare attacchi di MITM.
+Ciò significa che:
+	- tutte le comunicazioni sono cifrate via TLS (guarda il test case "Testing for Unencrypted Sensitive Data on the
+Network")
+	- il certificato è validato correttamente (guarda il test case "Testing Endpoint Identify Verification")
+	- il certificato dovrebbe essere pinned (guarda il test case "Testing Custom Certificate Stores and SSL Pinning")
+
+## Testing WebView Protocol Handlers (MSTG-PLATFORM-6)
+
+Diversi schema di default sono disponibili per le URL Android.
+Possono essere usate all'interno di una WebView secondo i seguenti schema:
+
+- http(s)://
+- file://
+- tel://
+
+Le WebView possono caricare contenuto remoto da un endpoint, ma possono anche caricare contenuto dalla directory dati dell'app o dall'external storage.
+Se viene caricato un content locale, l'utente non dovrebbe esser in grado di modificare il nome del file o il path usato per caricare il file, e non dovrebbe essere in grado di modificare il file caricato.
+
+### Static Analysis
+
+Controlla il codice sorgente per l'uso di WebView.
+Le seguenti impostazioni di WebView controllano l'accesso alle risorse:
+
+- `setAllowContentAccess`:
+permette di caricare contenuto da un content provider installato sul sistema, impostazione abilitata di default
+- `setAllowFileAccess`:
+abilita e disabilita l'accesso al file all'interno di una WebView.
+L'accesso al file è abilitato di default.
+Nota che ciò abilita e disabilita solo l'accesso al file system.
+Non riguarda asset e risorse, e sono accedibili tramite `file:///android_asset` e `file:///android_res`
+- `setAllowFileAccessFromFileURLs`:
+consente o meno a JavaScript in esecuzione in un context di un file scheme URL di accedere a un content di altri file scheme URL.
+Il valore di default è `true` per Android 4.0.3 - 4.0.4 e inferirori mentre è `false` per Android 4.1 e superiori.
+- `setAllowUniversalAccessFromFileURLs`:
+consente o meno a JavaScript in esecuzione in un context di un file scheme URL di accedere a un content di qualsiasi origine.
+Il valore di default è `true` per Android 4.0.3 - 4.0.4 e inferirori mentre è `false` per Android 4.1 e superiori.
+
+Se uno o più dei precedenti metodi è attivo, dovresti determinare se è veramente necessario per il funzionamento corretto dell'app.
+
+Se identifichi un'istanza di WebView, verifica se vengono caricati file locali con il metodo `loadURL`.
+
+```java
+WebView = new WebView(this);
+webView.loadUrl("file:///android_asset/filename.html");
+```
+
+La locazione da cui il file HTML viene caricato deve essere verificata.
+Se il file è caricato da un external storage, per esempio, il file è leggibile e scrivibile da chiunque.
+Ciò viene considerata una bad practice.
+Invece, il file dovrebbe essere salvato nella directory degli asset dell'app.
+
+```java
+webview.loadUrl("file:///" +
+Environment.getExternalStorageDirectory().getPath() + "filename.html");
+```
+
+L'URL specificata in `loadURL` dovrebbe essere controllata in caso di parametri dinamici che possono essere manipolati;
+la loro manipolazione potrebbe portare a local file inclusion.
+
+Usa i seguenti codice e best practice per disattivare gli handler di protocollo, se applicabili:
+
+```java
+//If attackers can inject script into a WebView, they could access local resources. This can be prevented by disabling local file system access, which is enabled by default. You can use the Android WebSettings class to disable local file system access via the public method `setAllowFileAccess`.
+
+webView.getSettings().setAllowFileAccess(false);
+
+webView.getSettings().setAllowFileAccessFromFileURLs(false);
+
+webView.getSettings().setAllowUniversalAccessFromFileURLs(false);
+
+webView.getSettings().setAllowContentAccess(false);
+```
+
+- crea una whitelist che definisce le pagine web locali e remote e i protocolli che possono essere caricati
+- crea le checksum dei file locali HTML/JavaScript e verificali all'avvio dell'app.
+Applica il minifying del JavaScript per renderne più difficile la lettura
+
+### Dynamic Analysis
+
+Per identificare l'uso degli handler di protocollo, cerca il modo di scatenare una chiamata o di accedere a file del file system durante l'uso dell'app.
+
+## Determining Whether Java Objects Are Exposed Through WebViews (MSTGPLATFORM-7)
+
+Android permette a JavaScript eseguito in una WebView di invocare e usare funzioni native di un'app Android.
+
+Il metodo `addJavascriptInterface` permette di esporre oggetti Java alle WebView.
+Quando usi questo metodo in un'app Android, in una WebView JavaScript può invocare i metodi nativi dell'app Android.
+
+Per versioni inferiori ad Android 4.2, è stata scoperta una vulnerabilità nell'implementazione di `addJavascriptInterface`: 
+una reflection che porta a remote code execution quando JavaScript malevolo viene iniettato in una WebView.
+
+Questa vulnerabilità è stata sanata dall'API Level 17, e la modalità di accesso ai metodi degli oggetti Java fornita a JavaScript è cambiata.
+Quando usi il metodo `addJavascriptInterface`, i metodi degli oggetti Java sono accessibili a JavaScript solo se hanno l'annotazione `@JavascriptInterface`.
+Prima dell'API Level 17, tutti i metodi degli oggetti Java erano accedibili di default.
+
+Un'app compilata per versioni di Android inferiori all'API Level 17 è ancora vulnerabile alla vulnerabilità di `addJavascriptInterface` e dovrebbe essere usata con estrema cautela.
+Bisogna applicare diverse best practice quando questo metodo è necessario.
+
+### Static Analysis
+
+Devi controllare se il metodo `addJavascriptInterface` viene usato, come viene usato, e se un attaccante può iniettare JavaScript malevolo.
+
+Il seguente esempio mostra come `addJavascriptInterface` viene usato come bridge tra gli oggetti Java e JavaScript in una WebView:
+
+```java
+WebView webview = new WebView(this);
+WebSettings webSettings = webview.getSettings();
+
+webSettings.setJavaScriptEnabled(true);
+
+MSTG_ENV_008_JS_Interface jsInterface = new MSTG_ENV_008_JS_Interface(this);
+myWebView.addJavascriptInterface(jsInterface, "Android");
+myWebView.loadURL("http://example.com/file.html");
+setContentView(myWebView);
+```
+
+In Android 4.2 e superiori, l'annotazione `JavascriptInterface` consente esplicitamente a JavaScript di accedere al metodo Java.
+
+```java
+public class MSTG_ENV_008_JS_Interface {
+	Context mContext;
+	/** Instantiate the interface and set the context */
+	MSTG_ENV_005_JS_Interface(Context c) {
+		mContext = c;
+	}
+
+	@JavascriptInterface
+	public String returnString () {
+		return "Secret String";
+	}
+	/** Show a toast from the web page */
+	@JavascriptInterface
+	public void showToast(String toast) {
+		Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show();
+	}
+}
+```
+
+Se l'annotazione `@JavascriptInterface` viene definita per un metodo, può essere invocato da JavaScript.
+Se l'app è compilata per API inferiori a 17, tutti i metodi Java sono esposti di default a JavaScript e possono essere invocati.
+
+Il metodo `returnString` può essere invocato in JavaScript per recuperare il valore di ritorno.
+Il valore viene poi memorizzato nel parametro `result`.
+
+```java
+var result = windows.Android.returnString()
+```
+
+Con l'accesso al codice JavaScript, tramite ad esempio uno stored XSS o un attacco MITM, un attaccante può invocare direttamente i metodi Java esposti.
+
+Se `addJavascriptInterface` è necessario, solo il JavaScript fornito con l'APK dovrebbe avere il permesso di invocarlo;
+nessun JavaScript dovrebbe essere caricato da endpoint remoti.
+
+Un'altra soluzione è limitare le API level a 17 e superiori nell'AndroidManifest.xml dell'app.
+Solo i metodi pubblici che sono annotati con `@JavascriptInterface` potranno essere acceduti tramite JavaScript.
+
+```xml
+<uses-sdk android:minSdkVersion="17" />
+```
+
+### Dynamic Analysis
+
+L'analisi dinamica dell'app può mostrarti quali HTML o JavaScript file sono caricati e quali vulnerabilità sono presenti.
+La procedura per sfruttare la vulnerabilità inizia col generare un payload JavaScript e iniettarlo in un file che l'app utilizza.
+L'injection può essere eseguita tramite Drozer e weasel (payload di exploitation avanzato di MWR), che può installare un agent, iniettare un agent limitato in un processo in esecuzione o connettersi a una reverse shell come Remote Access Tool (RAT).
+
+Una descrizione completa dell'attacco è disponibile nell'[articolo di MWR](https://labs.f-secure.com/archive/webview-addjavascriptinterface-remote-code-execution/)
+
+## Testing Object Persistence (MSTG-PLATFORM-8)
+
+Esistono diversi modi per memorizzare dati in Android.
+
+#### Object Serialization
+
+Un oggetto e i suoi dati possono essere rappresentati come una sequenza di byte.
+Ciò viene realizzato tramite l'object serialization in Java.
+La serializzazione non è intrinsecamente sicura.
+É solo un formato binario per memorizzare localmente i dati in un file .ser.
+La cifratura e la firma di dati serializzati è possibile quando le chiavi sono memorizzate in modo sicuro.
+La deserializzazione di un oggetto necessita di una classe della stessa versione della classe usata per serializzare l'oggetto.
+Dopo che le classi sono state cambiate, l'`ObjectInputStream` non può ricreare gli oggetti dal vecchio file .ser.
+L'esempio che segue mostra come creare una classe `Serializable` implementando l'interfaccia `Serializable`.
+
+```java
+import java.io.Serializable;
+
+public class Person implements Serializable {
+	private String firstName;
+	private String lastName;
+
+	public Person(String firstName, String lastName) {
+		this.firstName = firstName;
+		this.lastName = lastName;
+	}
+	//..
+	//getters, setters, etc
+	//..
+}
+```
+
+In questo modo sei in grado di leggere/scrivere l'oggetto con `ObjectInputStream`/`ObjectOutputStream` in un'altra classe.
+
+#### JSON
+
+Ci sono diversi modi per serializzare il contenuto di un oggetto in JSON.
+Android fornisce le classi `JSONObject` e `JSONArray`.
+Un'ampia varietà di librerie, tra cui GSON, Jackson, Moshi, può essere usata.
+Le principali differenze tra le librerie sta nell'uso della reflection per la composizione dell'oggetto, nel supporto delle annotazioni, nella creazione di oggetti immutabili, e nella memoria usata.
+Nota che quasi tutte le rappresentazioni JSON sono String-based e quindi immutabili.
+Ciò significa che qualsiasi secret memorizzato in JSON sarà difficilmente rimovibile dalla memoria.
+JSON può essere memorizzato ovunque, es. in un database o in un file.
+Devi solo assicurarti che qualsiasi JSON che contenga secret sia stato protetto opportunamente.
+Guarda il capitolo sul data storage per maggiori dettagli.
+Segue un semplice esempio di scrittura e lettura di JSON con GSON.
+In questo esempio, i contenuti di un'istanza di `BagOfPrimitives` vengono serializzati in JSON:
+
+```java
+class BagOfPrimitives {
+	private int value1 = 1;
+	private String value2 = "abc";
+	private transient int value3 = 3;
+
+	BagOfPrimitives() {
+		// no-args constructor
+	}
+}
+
+// Serialization
+BagOfPrimitives obj = new BagOfPrimitives();
+Gson gson = new Gson();
+String json = gson.toJson(obj);
+// ==> json is {"value1":1,"value2":"abc"}
+```
+
+#### XML
+
+Ci sono diversi modi per serializzare i contenuti di un oggetto in XML e viceversa.
+Android fornisce l'interfaccia `XmlPullParser` che fornisce un parsing XML facilmente manutenibile.
+Ci sono due implementazioni all'interno di Android:
+`KXmlParser` e `ExpatPullParser`.
+L'Android Developer Guide fornisce una buona guida su come usarli.
+Poi, ci sono diverse alternative, come un parser `SAX` incluso nel runtime di Java.
+Come JSON, XML è principalmente String-based, ciò significa che i secret String-based saranno difficilmente rimovibili dalla memoria.
+I dati XML possono essere memorizzati ovunque (database, file), ma necessitano di protezione aggiuntiva in caso di secret o informazioni che non dovrebbero essere modificate.
+Guarda il capitolo sul data storage per maggiori dettagli.
+Come detto prima, il vero pericolo in XML è l'attacco XML eXternal Entity (XXE) dato che potrebbe consentire la lettura di risorse esterne che sono accedibili dall'app.
+
+#### ORM
+
+Ci sono librerie che forniscono funzionalità di memorizzazione diretta di contenuti di un oggetto in un database e poi di iniziazione dell'oggetto con il contenuto del database.
+Si parla di Object-Relational Mapping (ORM).
+Le librerie che usano SQLite sono:
+
+- OrmLite
+- SugarORM
+- GreenDAO
+- ActiveAndroid
+
+Realm, dall'altro lato, usa il suo database per memorizzare i contenuti di una classe.
+La protezione fornita dagli ORM dipende dalla loro cifratura.
+Guarda il capitolo sul data storage per maggiori dettagli.
+
+#### Parcelable
+
+Parcelable è un'interfaccia per classi le cui istanze possono essere scritte o lette da un `Parcel`.
+I Parcel sono spesso usati per impacchettare una classe come parte di un `Bundle` per un `Intent`.
+Segue un esempio dall'Android developer documentation che implementa `Parcelable`
+
+```java
+public class MyParcelable implements Parcelable {
+	private int mData;
+
+	public int describeContents() {
+		return 0;
+	}
+
+	public void writeToParcel(Parcel out, int flags) {
+		out.writeInt(mData);
+	}
+
+	public static final Parcelable.Creator<MyParcelable> CREATOR = new Parcelable.Creator<MyParcelable>() {
+		public MyParcelable createFromParcel(Parcel in) {
+			return new MyParcelable(in);
+		}
+
+		public MyParcelable[] newArray(int size) {
+			return new MyParcelable[size];
+		}
+	};
+
+	private MyParcelable(Parcel in) {
+		mData = in.readInt();
+	}
+}
+```
+
+Dato che il meccanismo che coinvolge Parcel e Intent potrebbe cambiare nel tempo, e il `Parcelable` potrebbe contentere pointer `IBinder`, è sconsigliato memorizzare dati tramite `Parcelable.`
+
+#### Protocol Buffers
+
+I Protocol Buffer di Google sono un meccanismo indipendente a livello di piattaforma e di linguaggio per la serializzazione di dati strutturati tramite il Binary Data Format.
+Sono state scoperte diverse vulnerabilità nei Protocol Buffer, come CVE-2015-5237.
+Nota che i Protocol Buffer non forniscono alcuna protezione per la confidenzialità.
+
+### Static Analysis
+
+Se l'object persistence è usata per la memorizzazione di dati sensibili su un device, assicurati che le informazioni siano cifrate e firmate.
+Guarda i capitoli sul data storage e sul cryptographic management per maggiori dettagli.
+Poi, assicurati che la decifratura e la verifica delle chiavi siano ottenibili solo dopo che l'utente è autenticato.
+
+Ci sono poche raccomandazioni generiche da seguire:
+
+- assicurati che i dati sensibili siano stati cifrati e firmati dopo la serializzazione/persistence.
+Valuta firma o HMAC prima di usare i dati.
+Guarda il capitolo sulla crittografia per maggiori dettagli
+- assicurati che le chiavi usate nel passo precedente non siano facilmente estraibili.
+L'utente e/o l'istanza dell'app dovrebbero essere autenticati/autorizzati adeguatamente prima di ottenere le chiavi.
+Guarda il capitolo sul data storage per maggiori dettagli
+- assicurati che i dati negli oggetti deserializzati siano validati accuratamente prima di essere usati
+
+Per app ad alto rischio focalizzate sulla disponibilità, si raccomanda di utilizzare `Serializable` solo quando le classi serializzate sono stabili.
+In secondo luogo, si raccomanda di non usare la persistence reflection-based perchè:
+
+- l'attaccante potrebbe trovare la firma del metodo tramite l'argomento String-based
+- l'attaccante potrebbe essere in grado di manipolare i passi reflection-based per eseguire la business logic
+
+Guarda il capitolo sull'anti-reverse-engineering per maggiori dettagli
+
+#### Object Serialization
+
+Cerca nel codice sorgente le seguenti parole chiave:
+
+- `import java.io.Serializable`
+- `implements Serializable`
+
+#### JSON
+
+Se devi contrastare il memory dumping, assicurati che le informazioni molto sensibili non vengano memorizzate nel formato JSON perchè non puoi garantire le tecniche di anti-memory dumping con le librerie standard.
+Puoi cercare le seguenti parole chiave nelle librerie corrispondenti:
+
+- `import org.json.JSONObject`
+- `import org.json.JSONArray`
+
+Per `GSON` cerca:
+
+- `import com.google.gson`
+- `import com.google.gson.annotations`
+- `import com.google.gson.reflect`
+- `import com.google.gson.stream`
+- `new Gson();`
+- annotazioni come `@Expose`, `@JsonAdapter`, `@SerializedName`, `@Since` e `@Until` 
+
+Per `Jackson` cerca:
+
+- `import com.fasterxml.jackson.core`
+- `import org.codehaus.jackson` per le vecchie versioni
+
+#### ORM
+
+Quando usi una libreria ORM, assicurati che i dati siano memorizzati in un database cifrato e le rappresentazioni delle classi siano cifrate individualmente prima di essere memorizzate.
+Guarda il capitolo sul data storage e sul cryptographic management per maggiori dettagli. Puoi cercare le seguenti parole chiave per le corrispondenti librerie.
+
+Per`OrmLite` cerca:
+
+- `import com.j256.*`
+- `import com.j256.dao`
+- `import com.j256.db`
+- `import com.j256.stmt`
+- `import com.j256.table`
+
+Assicurati che il logging sia disabilitato.
+
+Per `SugarORM` cerca:
+
+- `import com.github.satyn`
+- `extends SugarRecord<Type>`
+- nell'AndroidManifest.xml, ci saranno entry `meta-data` con valori come `DATABASE`, `VERSION`, `QUERY_LOG` e `DOMAIN_PACKAGE_NAME`.
+
+Assicurati che `QUERY_LOG` sia impostato a false.
+
+Per `QueryDAO` cerca:
+
+- `import org.greenrobot.greendao.annotation.Convert`
+- `import org.greenrobot.greendao.annotation.Entity`
+- `import org.greenrobot.greendao.annotation.Generated`
+- `import org.greenrobot.greendao.annotation.Id`
+- `import org.greenrobot.greendao.annotation.Index`
+- `import org.greenrobot.greendao.annotation.NotNull`
+- `import org.greenrobot.greendao.annotation.*`
+- `import org.greenrobot.greendao.annotation.Database`
+- `import org.greenrobot.greendao.query.Query`
+
+Per `ActiveAndroid` cerca:
+
+- `ActiveAndroid.initialize(<contextReference>)`;
+- `import com.activeandroid.Configuration`
+- `import com.activeandroid.query.*`
+
+Per `Realm` cerca:
+
+- `import io.realm.RealmObject;`
+- `import io.realm.annotations.PrimaryKey;`
+
+#### Parcelable
+
+Assicurati che le adeguate misure di sicurezza siano state adottate quando informazioni sensibili vengono memorizzate tramite un Bundle che contiene un Parcel.
+Usa Intent espliciti e verifica che controlli di sicurezza addizionali siano applicati quando vengono usati gli IPC a livello di applicazione.
+
+### Dynamic Analysis
+
+Ci sono diversi modi per eseguire un'analisi dinamica:
+
+- per la persistence effettiva: usa le tecniche descritte nel capitolo sul data storage
+- per gli approcci reflection-based: usa Xposed per fare l'hooking nei metodi di deserializzazione o aggiungi informazioni non processabili agli oggetti serializzati per vedere come vengono gestiti (es. se l'app va in crash o possono essere estratte informazioni extra tramite arricchimento degli oggetti)
+
+## Testing enforced updating (MSTG-ARCH-9)
+
+Da Android 5.0, insieme alla Play Core Library, si può forzare l'aggiornamento delle app.
+Questo meccanismo si basa sull'uso di `AppUpdateManager`.
+Prima erano usati altri meccanismi, come chiamate http verso il Google Play Store, che non sono tanto affidabili dato che le API del Play Store potrebbero cambiare.
+Diversamente, si potrebbe usare Firebase per controllare possibili aggiornamenti forzati.
+Gli aggiornamenti forzati possono essere veramente utili in caso di public key pinning (guarda Testing Network communication per maggiori dettagli) quando un pin deve essere aggiornato a causa di una certificat/public key rotation.
+Inoltre, le vulnerabilità sono facilmente risolte tramite gli aggiornamenti forzati.
+
+Nota che le nuove versioni dell'app non risolveranno le issue di sicurezza che riguardano i back-end con cui l'app comunica.
+Potrebbe non essere sufficiente impedire all'app di comunicare con esso.
+La chiave è avere un'adeguata gestione del ciclo di vita delle API.
+In modo analogo, quando l'utente non viene forzato all'aggiornamento, non dimenticare di testare le vecchie versioni dell'app nei confronti dell'API in uso.
+
+### Static Analysis
+
+Il codice di esempio mostra un'app-update:
+
+```java
+//Part 1: check for update
+// Creates instance of the manager.
+AppUpdateManager appUpdateManager = AppUpdateManagerFactory.create(context);
+
+// Returns an intent object that you use to check for an update.
+Task<AppUpdateInfo> appUpdateInfo = appUpdateManager.getAppUpdateInfo();
+
+// Checks that the platform will allow the specified type of update.
+if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
+	// For a flexible update, use AppUpdateType.FLEXIBLE
+	&& appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)) {
+
+		//...Part 2: request update
+		appUpdateManager.startUpdateFlowForResult(
+			// Pass the intent that is returned by 'getAppUpdateInfo()'.
+			appUpdateInfo,
+			// Or 'AppUpdateType.FLEXIBLE' for flexible updates.
+			AppUpdateType.IMMEDIATE,
+			// The current activity making the update request.
+			this,
+			// Include a request code to later monitor this update request.
+			MY_REQUEST_CODE);
+
+		//...Part 3: check if update completed succesfully
+		@Override
+		public void onActivityResult(int requestCode, int resultCode, Intent data) {
+			if (myRequestCode == MY_REQUEST_CODE) {
+				if (resultCode != RESULT_OK) {
+					log("Update flow failed! Result code: " + resultCode);
+					// If the update is cancelled or fails,
+					// you can request to start the update again in case of forced updates
+				}
+			}
+		}
+
+		//..Part 4:
+		// Checks that the update is not stalled during 'onResume()'.
+		// However, you should execute this check at all entry points into the app.
+		@Override
+		protected void onResume() {
+			super.onResume();
+			appUpdateManager
+				.getAppUpdateInfo()
+				.addOnSuccessListener(
+					appUpdateInfo -> {
+					...
+					if (appUpdateInfo.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) {
+						// If an in-app update is already running, resume the update.
+						manager.startUpdateFlowForResult(
+							appUpdateInfo,
+							IMMEDIATE,
+							this,
+							MY_REQUEST_CODE);
+						}
+					});
+		}
+}
+```
+
+Quando verifichi se il meccanismo di update è adeguato, assicurati l'uso di `AppUpdateManager`.
+Se non viene usato, allora gli utenti potrebbero usare versioni vecchie con delle vulnerabilità.
+Fai attenzione all'uso di `AppUpdateType.IMMEDIATE`: se arriva un aggiornamento di sicurezza, bisognerebbe usare questo flag per assicurarsi che l'utente non possa continuare a usare l'app senza fare l'aggiornamento.
+Come si vede dalla Part 3 dell'esempio: assicurati che cancellazioni o errori non ricadano in re-check e che l'utente non possa andare avanti in caso di aggiornamenti di sicurezza critici.
+Infine, nella Part 4: si può vedere che per ogni entry point dell'app, viene forzato un meccanismo di aggiornamento, in modo da renderne più difficile il bypass.
+
+### Dynamic Analysis
+
+Per verificare un adeguato aggiornamento:
+prova a installare una versione più vecchia dell'app con delle vulnerabilità di sicurezza, chiedendo agli sviluppatori o usando un app store di terze parti.
+Verifica se puoi continuare a usare l'app senza aggiornarla.
+Se viene mostrato un aggiornamento, verifica se puoi continuare a usare l'app ignorando il prompt o raggirandolo usando normalmente l'app.
+Questo controllo include anche la verifica che il back-end non accetti le chiamate a endpoint vulnerabili e/o le versioni vulnerabili dell'app vengano bloccate dal back-end.
+Infine, verifica se puoi manipolare il version number di un'app man-in-the-middle e verifica come il back-end risponde.

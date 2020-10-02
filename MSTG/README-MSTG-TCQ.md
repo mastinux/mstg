@@ -28,8 +28,8 @@ In generale, gli input non fidati entrano nella mobile app attraverso:
 chiamate IPC, 
 schema URL custom, 
 QR code, 
-file ricevuti tramite Bluetooth, NFC o altro,
-pasteboard,
+file ricevuti tramite Bluetooth, NFC o altro, 
+pasteboard, 
 user interface.
 
 Verifica che le seguenti best practice siano state seguite:
@@ -68,8 +68,8 @@ errore di programmazione in cui l'app scrive oltre un range di memoria allocato 
 Un attaccante può usare questa vulnerabilità per sovrascrivere dati di controllo importanti che si trovano nella memoria adiacente, come puntatori a funzione
 - out-of-bound-access:
 se l'aritmentica dei puntatori è errata potrebbe far puntare un puntatore o un indice oltre i limiti della struttura di memoria.
-Quando un'app cerca di scrivere in un indirizzo al di fuori dei confini, si possono verificare crash o comporamenti non desiderati.
-Se l'attaccante può controllare l'offset e manipolare i valori scritti, è possibile realizzare una code execution
+Quando un'app cerca di scrivere in un indirizzo al di fuori di questi limiti, si possono verificare crash o comporamenti non desiderati.
+Se l'attaccante può controllare l'offset e manipolare i valori scritti, può realizzare una code execution
 - dangling pinter:
 si verifica quando un oggetto A referenziato da un oggetto B, viene eliminato o deallocato, ma il puntatore dall'oggetto B all'oggetto A non viene pulito.
 Se il programma usa il dangling pointer per chiamare una funzione virtuale dall'oggetto B, è possibile dirottare l'esecuzione sovrascrivendo il puntatore originale della vtable.
@@ -87,7 +87,7 @@ La possibilità di sfruttare un integer overflow/underflow dipende dal modo in c
 quando l'input non controllato dell'utente viene passato come parametro a una format string della famiglia di `printf` di C, l'attaccante potrebbe iniettare format token come %c e %n per accedere alla memoria.
 L'attaccante potrebbe leggere e scrivere in modo arbitrario la memoria, aggirando le feautre di protezione come ASLR.
 
-L'obiettivo primario nello sfruttamento della corruzione della memoria è di solito la redirezione del flusso del programma in una locazione in cui l'attaccante ha piazzato istruzioni macchina che prendono il nome di *shellcode*.
+L'obiettivo primario nello sfruttamento della corruzione della memoria è di solito la redirezione del flusso del programma in una locazione in cui l'attaccante ha piazzato istruzioni macchina che prendono il nome di shellcode.
 In iOS, la feature di data execution prevention impedisce l'esecuzione di codice a partire da segmenti marcati come dati.
 Per aggirare questa feature, gli attaccanti sfruttano il return-oriented programming (ROP).
 Con questo processo si concatenano piccoli pezzi di codice preesistenti in segmenti di testo in cui potrebbero eseguire una funzione utile all'attaccante o chiamare `mprotect` per chambiare le impostazioni di protezione della memoria per la locazione in cui l'attaccante ha piazzato lo shellcode.
@@ -112,7 +112,8 @@ Inoltre, cerca istanze di operazioni di copia implementate in loop `for` o `whil
 
 Verifica che le seguenti best practices siano state applicate:
 
-- quando si usano variabili integer per l'indexing di array, calcolo della lunghezza del buffer o altre operazioni critiche dal punto di vista della sicurezza, verifica che siano usati tipi unsigned integer
+- quando si usano variabili integer per l'indexing di array, calcolo della lunghezza del buffer o altre operazioni critiche dal punto di vista della sicurezza, 
+verifica che siano usati tipi unsigned integer
 - l'app non usi funzioni insicure di manipolazione di stringhe
 - se l'app contiene codice C++, verifica che siano usate le classi di stringhe ANSI C++
 - in caso di `memcpy`, assicurati che il buffer di destinazione sia almeno grande quanto quello sorgente e che entrambi non si sovrappongano
@@ -127,4 +128,3 @@ Individuare questi bug tramite analisi statica è molto difficile.
 ### Dynamic Analysis
 
 I bug di corruzione di memoria vengono scoperti soprattutto tramite l'input fuzzing.
-

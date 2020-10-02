@@ -21,7 +21,7 @@ Puoi impostare la tua macchina come gateway della rete e fare lo sniffing del tr
 - in alcuni casi è necessario eseguire un attacco MITM per forzare il device a parlare con la tua macchina.
 È consigliabile usare bettercap per redirigere il traffico dal device al tuo host
 - su device rooted puoi usare l'hooking o la code injection per intercettare le chiamate alle API e fare il dump o manipolare gli argomenti delle chiamate.
-In questo modo non è necessario ispezionare il traffico di rete.
+In questo modo non è necessario ispezionare il traffico di rete
 - su macOS puoi creare una Remote Virtual Interface per fare lo sniffing di tutto il traffico di un dispositivo iOS
 
 ## Simulating a Man-in-the-Middle Attack
@@ -75,4 +75,3 @@ Si consiglia l'uso di un'OTP tramite Google Authenticator.
 Identifica tutte le operazioni critiche (es. iscrizione dell'utente, recupero dell'account, transazioni finanziarie).
 Assicurati che ogni operazione critica richieda almeno un canale di verifica addizionale.
 Assicurati che la chiamata diretta alla funzione non possa aggirare l'uso di questi canali.
-
