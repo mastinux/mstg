@@ -1,6 +1,6 @@
 # Local Authentication on Android
 
-Con la local authentication l'app autentica l'utente tramite delle credenziali memorizzate localmente sul device.
+Con la local authentication, l'app autentica l'utente tramite delle credenziali memorizzate localmente sul device.
 Le credenziali possono essere un PIN, una password o un'impronta digitale.
 É importante assicurarsi che l'autenticazione avvenga almeno tramite una primitiva crittografica.
 Inoltre, si raccomanda che l'autenticazione sia verificata su un endpoint remoto.
@@ -29,7 +29,7 @@ if (!mKeyguardManager.isKeyguardSecure()) {
 ```
 
 - crea la chiave protetta con il blocco schermo.
-Per poter usare questa chiave l'utente deve aver sbloccato il device negli ultimi X secondi, o dovrà sbloccare di nuovo il device.
+Per poter usare questa chiave l'utente deve aver sbloccato il device negli ultimi X secondi, o dovrà sbloccarlo di nuovo.
 Assicurati che questo timeout non sia troppo lungo, dato che è più difficile assicurare che l'utente che sta usando l'app sia lo stessso che ha sbloccato il device:
 
 ```java
@@ -89,7 +89,7 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
 Assicurati che la chiave sbloccata venga usata durante l'esecuzione dell'app.
 Per esempio, la chiave potrebbe essere usata per decifrare il local storage o un messaggio ricevuto da un endpoint remoto.
-Se l'app controlla semplicemente se l'utente ha sbloccato la chiave o meno, la local authentication potrebbe essere raggirata.
+Se l'app controlla semplicemente che l'utente abbia sbloccato la chiave o meno, la local authentication potrebbe essere raggirata.
 
 ### Dynamic Analysis
 
@@ -100,7 +100,7 @@ Per esempio, potresti usare Frida per invocare direttamente la callback `onActiv
 
 L'accesso all'hardware viene fornito tramite la classe `FingerprintManager`.
 L'app ne istanzia un oggetto e invoca il metodo `authenticate`.
-Questo metodo tuttavia non è una prova forte che l'autenticazione tramite impronte digitali sia stata effettivamente attuata; per esempio l'autenticazione può essere patched da un attaccante oppure il metodo potrebbe restituire success tramite hooking.
+Questo metodo tuttavia non è una prova forte che l'autenticazione tramite impronte digitali sia stata effettivamente effettuata; per esempio l'autenticazione può essere patched da un attaccante oppure il metodo potrebbe restituire success tramite hooking.
 
 Si applica una sicurezza migliore combinando l'uso delle fingerprint API con la classe `KeyGenerator`.
 In questo modo, viene memorizzata una chiave simmetrica nel KeyStore e viene sbloccata con le impronte digitali dell'utente.
@@ -235,7 +235,8 @@ public void authenticationSucceeded(FingerprintManager.AuthenticationResult resu
 
 ### Fingerprint Authentication using an Asymmetric Key Pair
 
-Per implementare l'autenticazione con impronte digitali usando la crittografia asimmetrica, prima crea una coppia di chiavi usando la classe `KeyPairGenerator` e registra la chiave pubblica sul server.
+Per implementare l'autenticazione con impronte digitali usando la crittografia asimmetrica, 
+prima crea una coppia di chiavi usando la classe `KeyPairGenerator` e registra la chiave pubblica sul server.
 Puoi autenticare i dati firmandoli sul client e verificando la firma sul server.
 
 Una coppia di chiavi viene generata come segue:
@@ -296,8 +297,8 @@ Android 8.0 aggiunge due codici di errore:
 
 Assicurati che l'autenticazione tramite impronte digitali e/o altri tipi di autenticazione biometrica avvengano sulla base dell'Android SDK e delle sue API.
 Se ciò non avviene, assicurati che le SDK alternative siano state adeguatamente esaminate per eventuali debolezze.
-Assicurati che l'SDK sia supportata dal TEE/SE che sblocca il segreto crittografico sulla base dell'autenticazione biometrica.
-Questo segreto non dovrebbe essere sbloccato da nessun altro, tranne che da un'entry biometrica.
+Assicurati che l'SDK sia supportata dal TEE/SE che sblocca il secret crittografico sulla base dell'autenticazione biometrica.
+Questo secret non dovrebbe essere sbloccato da nessun altro, tranne che da un'entry biometrica.
 In questo modo, la logica dell'impronta digitale non può essere aggirata.
 
 ### Dynamic Analysis

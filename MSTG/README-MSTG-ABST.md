@@ -6,7 +6,7 @@
 
 Xposed è un framework per moduli che possono modificare il compotamento del sistema e delle app senza cambiare l'APK.
 Tecnicamente, è una versione estesa di Zygote che esporta API per codice Java in esecuzione quando un nuovo processo viene lanciato.
-L'esecuzione di codice Java all'interno del contesto di un'app appena istanziata permette di risolvere, fare l'hook e l'override di metodi Java appartenenti all'app.
+L'esecuzione di codice Java all'interno del contesto di un'app appena istanziata permette di fare l'hooking e l'override di metodi Java appartenenti all'app.
 Xposed usa la reflection per esaminare e modificare un'app in esecuzione.
 Le modifiche vengono applicate in memoria e vengono mantenute solo durante l'esecuzione del processo, dato che il binario dell'app non viene modificato.
 
@@ -46,16 +46,26 @@ Automatizza l'estrazione, conversione e decompilazione di APK.
 
 ### Drozer
 
-Drozer è un framework di security assessment Android che permette di cercare vulnerabilità di sicurezza in app e device basandosi sul ruolo delle app di terze parti, interagendo con gli endpoint ICP dell'app e il sistema operativo sottostante.
+Drozer è un framework di security assessment Android che permette di cercare vulnerabilità di sicurezza in app e device basandosi sul ruolo delle app di terze parti, interagendo con gli endpoint IPC dell'app e il sistema operativo sottostante.
 Automatizza alcuni task e può essere esteso con dei moduli.
 I moduli sono molto utili e coprono diverse categorie tra cui un insieme di scanner che permettono di cercare difetti comuni con un semplice comando, come il modulo `scanner.provider.injection` che individua SQL injection nei content provider in tutte le app installate sul device.
 
-È necessario installare il drozer agent sul device (`$ adb install drozer.apk`).
-Successivamente si avvia una sessione con il device emulato (`$ adb forward tcp:31415 tcp:31415` e `$ drozer console connect`).
-A questo punto, è possibile per esempio enumerare la superficie d'attacco di un'app col seguente comando: `$ dx> run app.package.attacksurface <package>`.
+È necessario installare il drozer agent sul device (
+`$ adb install drozer.apk`
+).
+Successivamente si avvia una sessione con il device emulato (
+`$ adb forward tcp:31415 tcp:31415` 
+e 
+`$ drozer console connect`
+ ).
+A questo punto, è possibile per esempio enumerare la superficie d'attacco di un'app col seguente comando: 
+`$ dx> run app.package.attacksurface <package>`
+.
 Si ottiene una lista di activity, broadcast receiver, content provider e service che sono esposti, cioè sono pubblici e possono essere acceduti da altre app.
 Una volta identificata la superficie d'attacco, puoi interagire con gli endpoint IPC tramite drozer senza dover scrivere un'app standalone separata.
-Ad esempio se l'app espone un'activity che fornisce dati sensibili, puoi invocare il modulo `app.activity.start`: `$ dz> run app.activity.start --component <package> <component-name>`.
+Ad esempio se l'app espone un'activity che fornisce dati sensibili, puoi invocare il modulo `app.activity.start`: 
+`$ dz> run app.activity.start --component <package> <component-name>`
+.
 Di seguito sono riportati alcuni comandi utili.
 
 	# List all the installed packages
@@ -126,6 +136,7 @@ Il seguente è un esempio di script per fare overwrite della funzione `onResume`
 ```javascript
 Java.perform(function () {
 	var Activity = Java.use("android.app.Activity");
+
 	Activity.onResume.implementation = function () {
 		console.log("[*] onResume() got called!");
 		this.onResume();
@@ -137,12 +148,13 @@ Java.perform(function () {
 Istanzia un wrapper per la classe `android.app.Activity` tramite `Java.use` e fa l'overwrite della funzione `onResume`.
 La nuova implementazione stampa informazioni sulla console e chiama il metodo `onResume` originale invocando `this.onResume`.
 
-Frida permette anche di cercare e manipolare gli oggetti istanziati sull'heap.
+Frida permette anche di cercare e di manipolare gli oggetti istanziati sull'heap.
 Il seguente script cerca istanze di oggetti `android.view.View` e invoca il loro metodo `toString`.
 
 ```javascript
 setImmediate(function() {
 	console.log("[*] Starting script");
+
 	Java.perform(function () {
 		Java.choose("android.view.View", {
 			"onMatch":function(instance){
@@ -163,6 +175,7 @@ Per elencare i metodi pubblici della classe `android.view.View`, puoi creare un 
 Java.perform(function () {
 	var view = Java.use("android.view.View");
 	var methods = view.class.getMethods();
+
 	for(var i = 0; i < methods.length; i++) {
 		console.log(methods[i].toString());
 	}
@@ -180,7 +193,7 @@ In questo modo le modifiche vengono nascoste alle app sensibili al rooting (es. 
 
 ### MobSF
 
-MoSF è un framework di pentesting di app mobile che supporta i file APK.
+MobSF è un framework di pentesting di app mobile che supporta i file APK.
 
 ### Objection
 
@@ -219,7 +232,7 @@ $ android sslpinning disable
 $ android keystore list
 # Try to circumvent root detection
 $ android root disable
-```sh
+```
 
 ### radare2
 
@@ -255,7 +268,9 @@ Tali siti non sono ufficiali e non c'è garanzia che l'app non sia stata reimpac
 Potresti usare APKMirror o APKPure, ma usali solo se sono l'ultima opzione.
 
 Invece il metodo raccomandato è l'estrazione dell'APK direttamente dal dispositivo.
-Puoi lanciare il comando `$ adb shell pm path <package name>` per creare l'APK sul device oppure usare APKExtractor.
+Puoi lanciare il comando 
+`$ adb shell pm path <package name>` 
+per creare l'APK sul device oppure usare APKExtractor.
 
 ## Information Gathering
 
@@ -283,7 +298,9 @@ Ottieni lo stesso risultato usando Frida:
 $ frida-ps -Uai
 ```
 	
-Una volta ottenuta l'APK, puoi estrarne il contenuto usando `$ unzip my.apk`.
+Una volta ottenuta l'APK, puoi estrarne il contenuto usando 
+`$ unzip my.apk`
+.
 Troverai:
 
 - AndroidManifest.xml
@@ -295,7 +312,9 @@ Troverai:
 - resources.arsc: risorse precompilate
 
 Usando `unzip` alcuni file, come AndroidManifest.xml, non sono leggibili.
-Allora usa `apktool d`.
+Allora usa 
+`apktool d`
+.
 
 Puoi ispezionare la directory `lib` contenuta nei file estratti dall'APK, per avere un'idea delle librerie native utilizzate.
 
@@ -329,8 +348,6 @@ $ adb logcat | grep "$(adb shell ps | grep <package-name> | awk '{print $2}')"
 ```
 
 ## Setting up a Network Testing Environment
-
-\# FIXME wireshark non riceve traffico
 
 Per fare lo sniffing remoto del traffico da un device emulato, fai il pipe di `tcpdump` su `nc`:
 
@@ -474,12 +491,14 @@ Se l'app usa semplicemente il metodo `Proxy.isProxySet()` puoi usare il seguente
 setTimeout(function(){
 	Java.perform(function (){
 		console.log("[*] Script loaded")
+
 		var Proxy = Java.use("<package-name>.<class-name>")
+
 		Proxy.isProxySet.overload().implementation = function() {
 			console.log("[*] isProxySet function invoked")
+			
 			return false
 		}
 	});
 });
 ```
-

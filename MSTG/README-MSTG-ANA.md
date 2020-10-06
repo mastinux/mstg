@@ -4,7 +4,7 @@
 
 Bisogna concentrarsi su due punti chiave:
 
-- verificare che un certificato proviene da una trusted source (es. trusted CA)
+- verificare che un certificato provenga da una trusted source (es. trusted CA)
 - determinare se l'endpoint server ha il certificato corretto
 
 Assicurati che l'hostname e lo stesso certificato siano verificati correttamente.
@@ -65,7 +65,7 @@ Se sei in grado di vedere il traffico HTTPS, allora l'app accetta tutti i certif
 
 Con il certificate pinning si associa al server di backend un particolare certificato X.509 o una chiave pubblica invece di accettare qualsiasi certificato firmato da una CA fidata.
 Dopo aver memorizzato ("pin") il certificato o la chiave pubblica del server, l'app si conetterà solo al server conosciuto.
-Rimuovendo la fiducia da CA esterne riduce la superficie d'attacco.
+La rimozione della fiducia verso CA esterne riduce la superficie d'attacco.
 
 Il certificato può essere pinned e hardcoded nell'app o recuperato quando l'app si connette per la prima volta al backend.
 Nel secondo caso, il certificato è associato all'host quando l'host viene visto per la prima volta.
@@ -265,7 +265,7 @@ Devi cercare questi metodi nel codice JavaScript dell'app per confermarne l'util
 
 L'analisi dinamica può essere eseguita lanciando un attacco MITM con il tuo interception proxy preferito.
 Ti consentirà di monitorare il traffico tra il client (l'app) e il server di backend.
-Se il proxy non è in grado di intercettare le HTTP request e response, allora il certificate pinning è stato implementato correttamente.
+Se il proxy non è in grado di intercettare le richieste e le risposte HTTP, allora il certificate pinning è stato implementato correttamente.
 
 #### Bypassing Certificate Pinning
 
@@ -276,7 +276,7 @@ Esistono diversi modi per raggirare il certificate pinning in un black box test,
 - Cydia Substrate: installa il package Android-SSL-TrustKiller
 
 Per la maggior parte delle app, il certificate pinning può essere raggirato in pochi secondi, ma solo se l'app usa le API sfruttate da questi tool.
-Se l'app implementa il certificate pinning con un framework o una libreria custom, questo deve essere patched e disattivato manualmente, il che potrebbe richiedere più tempo del normale.
+Se l'app implementa il certificate pinning con un framework o una libreria custom, questo deve essere patched e disattivato manualmente, il che potrebbe richiedere più tempo.
 
 #### Bypass Custom Certificate Pinning Statically
 
@@ -298,7 +298,7 @@ Dopo aver eseguito queste operazioni, reimpacchetta l'app usando apktool e insta
 
 #### Bypass Custom Certificate Pinning Dynamically
 
-Il bypassing dinamico della logica di pinning è il metodo più conveniente dato che non è necessario raggirare alcun controllo di integrità e i tentativi di trial & errror sono più veloci.
+Il bypassing dinamico della logica di pinning è il metodo più conveniente dato che non è necessario raggirare alcun controllo di integrità e i tentativi di trial & error sono più veloci.
 La parte più difficile è l'individuazione del metodo corretto su cui fare hooking e può richiedere del tempo in base al livello di obfuscation.
 Dato che gli sviluppatori di solito riusano le librerie esistenti, è utile cercare stringhe e file di licenza che identificano la libreria usata.
 Una volta indiviudata la libreria usata, esamina il codice sorgente non obfuscated per trovare i metodi sui quali si può fare dynamic instrumentation.
@@ -312,17 +312,19 @@ Puoi trovare il metodo corretto in due modi:
 L'effettivo metodo di pinning viene di solito usato o definito in prossimità di queste stringhe
 - cerca la signature del metodo nel codice smali
 
-Per il meotod Builder.add, puoi trovare i possibili metodi invocando il comando: `grep -ri java/lang/String:\[Ljava/lang/String;)L ./`.
+Per il meotod Builder.add, puoi trovare i possibili metodi invocando il comando: 
+`grep -ri java/lang/String:\[Ljava/lang/String;)L ./`
+.
 Questo comando cercherà tutti i metodi che prendono una stringa e una lista di stringhe come argomenti, e restituisce un complex object.
 In base alle dimensioni dell'app, potrebbero esserci più match.
 Fai l'hooking di ogni metodo con Frida e stampa gli argomenti.
-Uno di essi stamperà il domain name e l'hash del certificato, dopo di che puoi modificare gli argomenti e raggirare l'impememntazione del certificate pinning.
+Uno di essi stamperà il domain name e l'hash del certificato, dopo di che puoi modificare gli argomenti e raggirare l'implementazione del certificate pinning.
 
 ## Testing the Network Security Configuration settings (MSTG-NETWORK-4)
 
 ### Trust Anchors
 
-Su Android 7.0 o superiore, le app usano una Network Security Configuratin di default che non si fida delle CA aggiunte dall'utente, riducendo i possibili MITM dopo aver spinto l'utente a installare una CA malicious.
+Su Android 7.0 o superiore, le app usano una Network Security Configuratin di default che non si fida delle CA aggiunte dall'utente, riducendo i possibili MITM dopo aver spinto l'utente a installare una CA malevola.
 Questa protezione può essere raggirata usando una Network Security Configuration custom con un trust anchor custom che indica che l'app si fida delle CA aggiunte dall'utente.
 
 ### Static Analysis

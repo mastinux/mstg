@@ -10,8 +10,10 @@ Il seguente codice crea un file key.xml.
 ```java
 SharedPreferences sharedPref = getSharedPreferences("key", MODE_WORLD_READABLE);
 SharedPreferences.Editor editor = sharedPref.edit();
+
 editor.putString("username", "administrator");
 editor.putString("password", "supersecret");
+
 editor.commit();
 ```
 
@@ -32,8 +34,10 @@ Tuttavia le informazioni sensibili non vanno memorizzate in database non cifrati
 
 ```java
 SQLiteDatabase notSoSecure = openOrCreateDatabase("privateNotSoSecure",MODE_PRIVATE,null);
+
 notSoSecure.execSQL("CREATE TABLE IF NOT EXISTS Accounts(Username VARCHAR, Password VARCHAR);");
 notSoSecure.execSQL("INSERT INTO Accounts VALUES('admin','AdminPass');");
+
 notSoSecure.close();
 ```
 
@@ -41,8 +45,10 @@ Usando la libreria SQLCipher, i database SQLite possono essere cifrati con passw
 
 ```java
 SQLiteDatabase secureDB = SQLiteDatabase.openOrCreateDatabase(database, "password123", null);
+
 secureDB.execSQL("CREATE TABLE IF NOT EXISTS Accounts(Username VARCHAR,Password VARCHAR);");
 secureDB.execSQL("INSERT INTO Accounts VALUES('admin','AdminPassEnc');");
+
 secureDB.close();
 ```
 
@@ -54,7 +60,9 @@ memorizzare la password in un server e consentirne l'accesso solo tramite un ser
 Firebase offre un Real-time Database, che memorizza e sincronizza i dati con un database NoSQL cloud-based.
 I dati sono memorizzati in un JSON e sincronizzati in real-time con ogni client, restano disponibili anche se l'app va offline.
 Se il cloud server non è opportunamente configurato, potrebbe esporre informazioni sensibili.
-Puoi usare [FireBaseScanner](https://github.com/shivsahni/FireBaseScanner) per verificare se l'APK presenta tale problema (`$ python FirebaseScanner.py -p my.apk`).
+Puoi usare [FireBaseScanner](https://github.com/shivsahni/FireBaseScanner) per verificare se l'APK presenta tale problema (
+`$ python FirebaseScanner.py -p my.apk`
+).
 
 Il Realm Database per Java può essere cifrato con una chiave memorizzata nel file di configurazione.
 
@@ -98,8 +106,8 @@ Puoi usare le chiavi memorizzate in due modi:
 
 1. l'utente è autorizzato a usare le chiavi per un periodo di tempo limitato dopo l'autenticazione.
 Tutte le chiavi possono essere usate non appena l'utente sblocca il device.
-Questo modo è usabile solo se il blocco schermo è abilitato.
-Quando il blocco schermo viene rimosso, tutte le chiavi diventano non valide.
+Questo modo è utilizzabile solo se il blocco schermo è abilitato.
+Quando il blocco schermo viene rimosso, tutte le chiavi vengono invalidate.
 2. l'utente è autorizzato a usare una specifica operazione crittografica che è associata con una chiave.
 L'utente deve richiedere un'autorizzazione separata per ogni operazione che coinvolge la chiave.
 Solo l'autenticazione tramite impronte digitali può essere usata in questo caso.
@@ -125,7 +133,7 @@ Cerca
 Verifica che venga usata la funzione `store(OutputStream stream, char[] password)` per memorizzare il KeyStore con una password.
 Assicurati che la password non sia hard-coded ma fornita dall'utente.
 
-Se le chiavi non sono memorizzate nel KeyStore, tramite un device rooted è sempre possibile estrarle.
+Se le chiavi non sono memorizzate nel KeyStore, è sempre possibile estrarle in un device rooted.
 
 ### Dynamic Analysis
 
@@ -157,7 +165,7 @@ Se sono usati altri meccanismi di storage pubblici, è necessario fare validazio
 
 ## Testing Logs for Sensitive Data (MSTG-STORAGE-3)
 
-È opportuno usare una classe e un meccanismo di logging centralizzato e rimuovere il logging verboso nelle release di produzione dato che altre app possono leggerlo.
+È opportuno usare una classe e un meccanismo di logging centralizzato e rimuovere il logging verboso nelle release di produzione dato che le altre app possono leggerlo.
 
 ### Static Analysis
 
@@ -190,7 +198,7 @@ Se ti aspetti una certa stringa nel log puoi filtrare con `-e <expr>` o `--regex
 ## Determining Whether Sensitive Data is Sent to Third Parties (MSTG-STORAGE-4)
 
 Quando l'app usa servizi di terze parti, bisogna verificare che solo le informazioni necessarie e non sensibili siano inviate a tali servizi.
-I servizi possono essere implementati tramite una libreria standalone Jar nell'APK) o una SDK completa.
+I servizi possono essere implementati tramite una libreria standalone (Jar nell'APK) o una SDK completa.
 
 ### Static Analysis
 
@@ -226,7 +234,7 @@ Se all'attributo `android:inputType` viene assegnato il valore `textNoSuggestion
 ### Dynamic Analysis
 
 Lancia l'app e inserisci del testo negli input che ricevono dati sensibili.
-Se vengono ci sono dei suggerimenti, allora la keyboard cache non è stata disabilitata per questi campi.
+Se ci sono dei suggerimenti, allora la keyboard cache non è stata disabilitata per questi campi.
 
 ## Determining Whether Sensitive Stored Data Has Been Exposed via IPC Mechanisms (MSTG-STORAGE-6)
 
@@ -237,7 +245,7 @@ Se non sono configurati adeguatamente, possono rilevare informazioni sensibili.
 
 Cerca i content provider dichiarati in AndroidManifest.xml.
 Verifica se è esportato (`android:exported="true"`).
-Anche se non lo è, sarà tale se all'interno è dichiarato un `<intent-filter>`.
+Anche se non lo è, lo sarà se al suo interno è dichiarato un `<intent-filter>`.
 Se il contenuto è pensato per essere acceduto solo dall'app imposta `android:exported="false"`.
 Se invece non lo è, definisci i permessi di lettura/scrittura appropriati.
 Verifica se i dati sono protetti con `android:permission`.
@@ -301,7 +309,7 @@ master PIN: 2468
 Enumera la superficie d'attacco usando drozer:
 
 ```sh
-	dz> run app.provider.info -a com.mwr.example.sieve
+dz> run app.provider.info -a com.mwr.example.sieve
 ```
 
 ```
@@ -522,7 +530,7 @@ $ tar xvf mybackup.tar
 
 ## Finding Sensitive Information in Auto-Generated Screenshots (MSTG-STORAGE-9)
 
-Dati sensibili possono essere esposti se l'utente esegue screenshot dell'app quando questi sono visualizzati, oppure se una malicious app è in grado di catturare screenshot sul device.
+I dati sensibili possono essere esposti se l'utente esegue screenshot dell'app quando questi sono visualizzati, oppure se un'app malevola è in grado di catturare screenshot sul device.
 
 ### Static Analysis
 
@@ -531,7 +539,8 @@ Controlla che l'opzione `FLAG_SECURE` sia stata impostata.
 Diversamente l'app è vulnerabile a screen capturing.
 
 ```java
-getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE,
+getWindow().setFlags(
+	WindowManager.LayoutParams.FLAG_SECURE,
 	WindowManager.LayoutParams.FLAG_SECURE);
 
 setContentView(R.layout.activity_main);
@@ -549,19 +558,20 @@ L'analisi della memoria potrebbe consentire l'estrazione di dati sensibili.
 L'obiettivo è verificare che i dati sensibili rimangano in memoria il più breve tempo possibile.
 Puoi fare un dump della memoria oppure usare un debugger.
 Il dumping della memoria è un processo molto error-prone dato che contiene gli output delle funzioni eseguite.
-Inoltre la ricerca di dati è fattibile se già si conosce il formato da cercare; ad esempio nel caso di valori cifrati è difficile individuarli.
+Inoltre la ricerca di dati è fattibile se già si conosce il formato da cercare; 
+ad esempio è difficile individuare i valori cifrati.
 
 ### Static Analysis
 
 Controlla la documentazione e identifica i componenti prima di esaminare il codice sorgente.
-Ad esempio, i dati sensibili provenienti da un backend potrebbero essere in un HTTP client, un XML parse.
+Ad esempio, i dati sensibili provenienti da un backend potrebbero essere in un HTTP client, un XML parser.
 Le loro copie devono essere rimosse dalla memoria il prima possibile.
 
 La comprensione dell'architettura dell'app e il ruolo dell'archietettura nel sistema ti aiuterà a identificare le informazioni sensibili che non devono essere esposte in memoria.
 Per esempio, se l'app riceve dati da un server e li trasferisce a un altro senza alcuna elaborazione, allora questi dati possono essere cifrati per non esporli in memoria.
 
 Se l'app deve esporre dati sensibili in memoria, devi assicurarti che le loro copie siano esposte per pochissimo tempo.
-In altre parole, i dati sensibili devono essere gestiti in modo centralizzato e tramite strutture dati mutabili primitivi.
+In altre parole, i dati sensibili devono essere gestiti in modo centralizzato e tramite strutture dati mutabili primitive.
 Il secondo requisito dà agli sviluppatori accesso diretto alla memoria.
 Assicurati che le usino per sovrascrivere i dati sensibili con dati dummy (tipicamente zeri).
 
@@ -581,7 +591,7 @@ Dovresti:
 - valutare i componenti di terze parti (librerie e framework) in base alle API pubbliche.
 Determina se le API pubbliche gestiscono i dati sensibili secondo quanto descritto in questo capitolo.
 
-Non usare strutture immutabili (come `String` e `BigInteger`) per rappresentare i segreti.
+Non usare strutture immutabili (come `String` e `BigInteger`) per rappresentare i secret.
 Impostarle a null non ha efficacia: il garbage collector potrebbe raccoglierle, ma potrebbero rimanere nell'heap.
 Tuttavia, dovresti invocare il garbage collector dopo ogni operazione critica.
 Quando copie di informazioni non sono state rimosse in modo adeguato, la tua richiesta ridurrà l'intervallo di tempo per il quale queste copie sono disponibili in memoria.
@@ -716,10 +726,12 @@ Per un'analisi più avanzata usa l'Eclipse Memory Anlayzer Tool (MAT).
 Per analizzare il dump in MAT, usa `hprof-conv`, disponibile con l'Android SDK.
 
 ```sh
-hprof-conv memory.hprof memory-mat.hprof
+$ hprof-conv memory.hprof memory-mat.hprof
 ```
 
-In MAT prova Histogram (stima di oggetti catturati per ogni tipo), Thread Overview (frame dei processi), Dominator Tree (dipendenze keep-alive tra gli oggetti).
+In MAT prova Histogram (stima di oggetti catturati per ogni tipo), 
+Thread Overview (frame dei processi), 
+Dominator Tree (dipendenze keep-alive tra gli oggetti).
 La feature Object Query Language permette di interrogare gli oggetti contenuti nel memory dump.
 Considera l'analogia: 
 classi -> tabelle, 
@@ -728,7 +740,7 @@ campi -> colonne.
 Per selezionare tutti gli oggetti che hanno un campo password usa:
 
 ```sql
-	SELECT password FROM ".*" WHERE (null != password)
+SELECT password FROM ".*" WHERE (null != password)
 ```
 
 Durante l'analisi cerca:

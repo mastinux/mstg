@@ -30,8 +30,10 @@ Android supporta la cifratura del device a partire da Android 2.3.4 (API level 1
 
 Android 5.0 (API level 21) e successivi supportano la full-disk encryption.
 Si usa una singola chiave protetta dalla password del device per cifrare e decifrare la partizione userdata.
-Questo tipo di cifratura viene considerata deprecata e la file-based encryption dovrebbe essere usata quando possibile.
-La full-disk encryption ha degli incovenienti, come l'impossibilità di ricevere chiamate o non avere sveglie attive dopo il reboot prima che l'utente abbia inserito la password.
+Questo tipo di cifratura viene considerata deprecata e quando possibile la file-based encryption dovrebbe essere usata.
+La full-disk encryption ha degli incovenienti, 
+come l'impossibilità di ricevere chiamate o 
+non avere sveglie attive dopo il reboot prima che l'utente abbia inserito la password.
 
 Android 7.0 (API level 24) supporta la file-based encryption.
 Questa permette di cifrare file diversi con chiavi diverse in modo che possano essere decifrati indipendentemente.
@@ -59,7 +61,7 @@ uid=10188(u0_a188) gid=10188(u0_a188) groups=10188(u0_a188),3003(inet),
 
 ## The App Sandbox
 
-Le app sono eseguite nell'Android Application Sendbox, che separa i dati dell'app e il codice di esecuzione dalle altre app sul device.
+Le app sono eseguite nell'Android Application Sandbox, che separa i dati dell'app e il codice di esecuzione dalle altre app sul device.
 Ciò aggiunge un livello di sicurezza.
 
 L'installazione di una nuova app crea una nuova directory denominata con il nome del suo package, secondo il path `/data/data/[package-name]`.
@@ -100,7 +102,9 @@ Il modulo base contiene il core dell'app.
 Il modulo base può essere esteso con diversi moduli che contengono nuove funzionalità/arricchimenti per l'app.
 Puoi creare un'APK a partire da un AAB eseguendo il seguente comando:
 
-`$ bundletool build-apks --bundle=/MyApp/my_app.aab --output=/MyApp/my_app.apks`
+```sh
+$ bundletool build-apks --bundle=/MyApp/my_app.aab --output=/MyApp/my_app.apks
+```
 
 Se vuoi creare un'APK firmata da installare su un device di test, usa:
 
@@ -131,7 +135,7 @@ Sono entità autonome nelle quali sono inclusi tutti i loro componenti.
 Tuttavia devono essere integrati con le activity per essere utili.
 L'activity gestisce i propri fragment tramite un Fragment Manager.
 
-Le strutture di Inter-Process Communication permettono alle app di scambiarsi segnali in modo sicuro.
+Le strutture di Inter-Process Communication (IPC) permettono alle app di scambiarsi segnali in modo sicuro.
 Invece di basarsi sulle strutture di IPC Linux, Android si basa su Binder, un'implementazione custom di OpenBinder.
 Il framework di Binder usa un modello di comunicazione client-server.
 Le app invocano i metodi IPC tramite un oggetto proxy.
@@ -155,7 +159,7 @@ Questo intent descrive l'activity e contiene i dati necessari
 un service è un component che esegue operazioni in background, senza un'interfaccia utente
 - consegnare un broadcast:
 un broadcast è un messaggio che qualsiasi app può ricevere.
-Il sistema consegna broadcast per eventi di sistema, tra cui il boot di sistema o l'avvio della ricarica
+Il sistema consegna broadcast per eventi di sistema, tra cui il boot di sistema o l'avvio della carica
 
 Gli intent espliciti indicano il componente che verrà avviato.
 Gli intent impliciti vengono inviati al sistema operativo per eseguire una data azione su un insieme di dati.
@@ -166,7 +170,7 @@ Per esempio, dichiarando un intent filter per un'activity, si permette ad altre 
 Allo stesso modo, l'activity può solo essere avviata con un intent esplicito se non si è dichiarato nessun intent filter per essa.
 Android usa gli intent per inviare messaggi in broadcast alle app (es. SMS), importanti informazioni sulla batteria (es. batteria scarica), cambiamenti di rete (es. perdita di connessione).
 
-Per migliorare la sicurezza e la privacy, un Local Broadcast Manager è usato per inviare e ricevere intent all'interno di un app senza il bisogno di inviarli al sistema operativo.
+Per migliorare la sicurezza e la privacy, è usato un Local Broadcast Manager per inviare e ricevere intent all'interno di un app senza il bisogno di inviarli al sistema operativo.
 È molto utile per garantire che dati sensibili e privati non escano dal perimetro dell'app.
 
 I broadcast receiver sono componenti che permettono alle app di ricevere notifiche dalle altre app e dal sistema operativo.
@@ -182,7 +186,7 @@ Si può usare un Local Broadcast Manager per assicurarsi che gli intent siano ri
 
 Android usa SQLite per memorizzare i dati.
 Esso non viene eseguito in un processo separato, ma è parte dell'app.
-Di default il database di un'app è accedibile solo dall'app stessa.
+Di default il database di un'app è accessibile solo dall'app stessa.
 I content provider offrono un meccanismo per astrarre le sorgenti di dati (database e file); inoltre forniscono un meccanismo standard ed efficiente per condividere i dati tra le app.
 Per essere accessibili alle altre app, i content provider vanno dichiarati esplicitamente in AndroidManifest.xml.
 Sono implementati secondo lo schema `content://model`.
@@ -190,14 +194,14 @@ I content provider offrono tutte le operazioni di un database: create, read, upd
 Quindi, una qualsiasi app con gli adeguati diritti nel suo manifest può manipolare i dati di altre app.
 
 I service sono componenti di Android che eseguono task in background senza presentare un'interfaccia utente.
-Sono pensati per andare in esecuzione per un lungo tempo.
+Sono pensati per essere in esecuzione nel lungo periodo.
 
 Android fornisce un insieme di permission per alcuni task che l'app può richiedere.
 Le permission sono classificate in base al livello di protezione e sono divise in:
 
 - Normal:
 livello più basso di protezione.
-Dà all'app accesso a feature isolate a livello di app con rischio minimo per app, utente e sistema
+Dà accesso all'app a feature isolate a livello di app con rischio minimo per app, utente e sistema
 es. `android.permission.INTERNET`
 - Dangerous:
 permette all'app di eseguire azioni che potrebbero impattare sulla privacy dell'utente o una normale operazione del device.
@@ -226,7 +230,7 @@ Questa verifica è più veloce e offre una protezione globale contro le modifich
 - APK Signature Scheme (v3 Scheme):
 usa lo stesso formato v2.
 Aggiunge informazioni sulle versioni SDK supportate, una struct per proof-of-rotation all'APK signing block.
-L'attributo di proof-of-rotation è una lista linked singolarmente, con ogni nodo contenente un certificato usato per firmare la versione precedente dell'app.
+L'attributo di proof-of-rotation è una lista singolarmente linkata, con ogni nodo contenente un certificato usato per firmare la versione precedente dell'app.
 I vecchi certificati firmano il nuovo insieme di certificati, fornendo ogni nuova chiave con l'evidenza che dovrebbe essere fidata come le vecchie chiavi.
 
 ## Android Application Attack surface
@@ -236,7 +240,6 @@ L'app potrebbe essere vulnerabile se non:
 
 - valida tutti gli input provenienti da comunicazioni IPC o URL-schema
 - valida tutti gli input dell'utente
-- comunica in modo sicuro con i server di backend
+- comunica in modo sicuro con i server di back-end
 - memorizza in modo sicuro tutti i dati locali o carica dati non fidati dallo storage
 - si protegge da ambienti compromessi, repackaging o altri attacchi locali
-

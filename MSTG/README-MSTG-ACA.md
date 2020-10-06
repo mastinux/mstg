@@ -4,7 +4,7 @@
 
 Le API crittografiche Android sono basate su Java Cryptography Architecture (JCA).
 JCA specifica le interfacce e la loro implementazione, permettendo di usare security provider diversi che implementano gli algoritmi crittografici.
-I provider cambiano in base a versione Android e a build specifica dell'OEM.
+I provider cambiano in base a versione Android e a build specifica dell'Original Equipment Manufacturer (OEM).
 
 Per applicazioni che supportano versioni più vecchie di Android di solito si usa Spongy Castle.
 
@@ -105,7 +105,7 @@ Il metodo più sicuro di gestire le chiavi è semplicemente non memorizzarle mai
 Ciò significa che bisogna chiedere una passphrase all'utente ogni volta che l'app deve eseguire operazioni crittografiche.
 Anche se non è l'implementazione ideale da un punto di vista dell'user experience, è il metodo più sicuro di gestire le chiavi.
 In questo modo le chiavi sono disponibili in memoria in un array solo quando sono usate.
-Nessuna chiave viene scritta sul file system  e nessuna passphrase viene memorizzata.
+Nessuna chiave viene scritta sul file system e nessuna passphrase viene memorizzata.
 Tuttavia, alcune cipher non puliscono adeguatamente i loro array di byte.
 Inoltre, fai attenzione quando provi ad azzerare la chiave.
 
@@ -143,7 +143,7 @@ Ciò significa che un chip crittografico o un Trusted Platform Module (TPM) vien
 La metodologia generale è cifrare le chiavi simmetriche con la chiave pubblica e memorizzare la chiave privata nell'`AndroidKeyStore`.
 La chiave simmetrica cifrata viene memorizzata in modo sicuro nelle `SharedPreferences`.
 Quando l'app necessita della chiave simmetrica, preleva la chiave privata dall'`AndroidKeyStore` e decifra la chiave simmetrica.
-Quando le chiavi sono generate e usate all'interno dell'`AndroidKeyStore` e il `KeyInfo.isinsideSecureHardware` restituisce true, allora non è possibile fare il dump delle chiavi o monitorare le sue operazioni crittografiche.
+Quando le chiavi sono generate e usate all'interno dell'`AndroidKeyStore` e il `KeyInfo.isInsideSecureHardware` restituisce true, allora non è possibile fare il dump delle chiavi o monitorare le sue operazioni crittografiche.
 
 ### Secure Key Import into Keystore
 
@@ -152,7 +152,7 @@ Android 9 consente di importare chiavi in modo sicuro nell'`AndroidKeystore`.
 Questa coppia di chiavi serve a proteggere la chiave da importare nell'`AndroidKeystore`.
 La chiave cifrata con la chiave pubblica del certificato è generata come messaggio ASN.1-encoded nel formato `SecureKeyWrapper` che contiene anche una descrizione del modo in cui la chiave da importare può essere usata.
 La chiave viene poi decifrata nell'hardware dell'`AndroidKeystore` del device.
-In questo modo la chiave non è mai in cleartext nella memoria del device.
+In questo modo la chiave non è mai in chiaro nella memoria del device.
 
 La sicurezza delle chiavi è influenzata da:
 
@@ -181,8 +181,8 @@ Le linee guida per l'implementazione della key attestation sono:
 		- verificare la firma della key attestation response
 		- controllare il livello di sicurezza  del Keymaster per determinare se il device ha un meccanismo di key storage sicuro.
 		Il Keymaster è un pezzo di software che viene eseguito nel security context ed espone tutte le operazioni del keystore.
-		Il livello di sicurezza può essere: `Software`, `Trustedenvironment` o `StrongBox`.
-		- inoltre, puoi controllare il livello di sicurezza per verificare come l'attestation certificate è stato generato.
+		Il livello di sicurezza può essere: `Software`, `TrustedEnvironment` o `StrongBox`.
+		- inoltre, puoi controllare il livello di sicurezza per verificare come è stato generato l'attestation certificate.
 		Altri controlli riguardanti le chiavi possono essere lo scopo, il tempo di accesso, i requisiti di autenticazione
 
 Un tipico Android Keystore attestation response contiene i seguenti parametri:
@@ -195,7 +195,7 @@ Un tipico Android Keystore attestation response contiene i seguenti parametri:
 `sig` viene generata concatenando `authData` e `clientDataHash` (challenge ricevuta dal server) e firmando il tutto con la chiave privata con l'algoritmo `alg`.
 Inoltre `sig` è verificato lato server usando la chiave pubblica contenuta nel certificato.
 
-Da un punto di vista dell'analisi di sicurezza l'analista potrebbe eseguire i seguenti controlli sull'implementazione:
+Da un punto di vista dell'analisi di sicurezza, l'analista potrebbe eseguire i seguenti controlli sull'implementazione:
 
 - controllare se la key attestation è completamente implementata lato client.
 In questo caso può essere aggirata modificando l'app o facendone l'hooking
@@ -207,7 +207,7 @@ Inoltre dovrebbero essere eseguiti controlli sull'effettiva randomness della cha
 
 ### Decryption only on Unlocked Devices
 
-Da Android 9 il flag `unlockedDeviceRequred` impedisce che le chiavi memorizzate nell'`AndroidKeystore` vengano decifrate quando il device è bloccato, e richiede che lo schermo venga sbloccato prima di decifrarle.
+Da Android 9 il flag `unlockedDeviceRequired` impedisce che le chiavi memorizzate nell'`AndroidKeystore` vengano decifrate quando il device è bloccato, e richiede che lo schermo venga sbloccato prima di decifrarle.
 
 ### StrongBox Hardware Security Module
 
@@ -269,7 +269,7 @@ Se hai accesso al codice sorgente, verifica almeno i seguenti punti:
 
 - controlla quale meccanismo è usato per memorizzare una chiave:
 privilegiare `AndroidKeyStore` rispetto alle altre soluzioni
-- controlla se i meccanismi di defense in depth sono usati per assicurae l'uso di un TEE
+- controlla se i meccanismi di defense in depth sono usati per assicurare l'uso di un TEE
 - in caso di soluzioni crittografiche whitebox: studiarne l'efficacia o consultare uno specialista dell'area
 - verificare gli scopi della chiave, per esempio:
 	- assicurarsi che per chiavi asimmetriche, la chiave privata sia esclusivamente usata per firmare e la chiave pubblica sia usata per la cifratura
