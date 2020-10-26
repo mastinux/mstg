@@ -5,7 +5,7 @@
 Bisogna concentrarsi su due punti chiave:
 
 - verificare che un certificato provenga da una trusted source (es. trusted CA)
-- determinare se l'endpoint server ha il certificato corretto
+- determinare se l'endpoint ha il certificato corretto
 
 Assicurati che l'hostname e lo stesso certificato siano verificati correttamente.
 Cerca nel codice sorgente `TrustManager` e `HostnameVerifier`.
@@ -31,12 +31,13 @@ Ignorare qualsiasi errore TLS che si verifica durante la connessione al sito rem
 #### Apache Cordova Certificate Verification
 
 L'implementazione di WebView interna al framework Apache Cordova ignora gli errori TLS nel metodo `onReceivedSslError` se il flag `android:debuggable` è abilitato nel manifest dell'app.
-Assicurati quindi che l'app non sia degbugguable.
+Assicurati quindi che l'app non sia degbuggable.
 
 #### Hostname Verification
 
 Un'altra vulnerabilità sull'implementazione di TLS lato client è la mancanza di hostname verification.
-Gli ambienti di sviluppo di solito usano indirizzi interni invece di domain name validi, allora gli svilupptori disabilitano l'hostname verification (o forzano l'app a fidarsi di qualsiasi hostname) e si dimenticano di cambiarlo quando l'app va in produzione.
+Gli ambienti di sviluppo di solito usano indirizzi interni invece di domain name validi, 
+allora gli svilupptori disabilitano l'hostname verification (o forzano l'app a fidarsi di qualsiasi hostname) e si dimenticano di cambiare questo comportamento quando l'app va in produzione.
 
 Assicurati che l'app verifichi l'hostname prima di instaurare una connessione sicura.
 
@@ -64,8 +65,8 @@ Se sei in grado di vedere il traffico HTTPS, allora l'app accetta tutti i certif
 ## Testing Custom Certificate Stores and Certificate Pinning (MSTG-NETWORK-4)
 
 Con il certificate pinning si associa al server di backend un particolare certificato X.509 o una chiave pubblica invece di accettare qualsiasi certificato firmato da una CA fidata.
-Dopo aver memorizzato ("pin") il certificato o la chiave pubblica del server, l'app si conetterà solo al server conosciuto.
-La rimozione della fiducia verso CA esterne riduce la superficie d'attacco.
+Dopo aver memorizzato ("pinned") il certificato o la chiave pubblica del server, l'app si conetterà solo al server conosciuto.
+L'assenza di fiducia verso CA esterne riduce la superficie d'attacco dell'app.
 
 Il certificato può essere pinned e hardcoded nell'app o recuperato quando l'app si connette per la prima volta al backend.
 Nel secondo caso, il certificato è associato all'host quando l'host viene visto per la prima volta.
@@ -111,7 +112,7 @@ Se il controllo di certificate pinning fallisce, comparirà il seguente evento n
 I/X509Util: Failed to validate the certificate chain, error: Pin verification failed
 ```
 
-Usando un decompiler (es. jadx o apktool) puoi verificare se l'entry `<pin>` è presente nel file network_security_config.xml presente nel folder /res/xml/.
+Usando un decompiler (es. jadx o apktool) puoi verificare se l'entry `<pin>` è presente nel file network_security_config.xml nel folder /res/xml/.
 
 #### TrustManager
 
@@ -125,6 +126,7 @@ L'HTTP client dovrebbe caricare il KeyStore:
 
 ```java
 InputStream in = resources.openRawResource(certificateRawResource);
+
 keyStore = KeyStore.getInstance("BKS");
 keyStore.load(resourceStream, password);
 ```
@@ -135,12 +137,16 @@ Una volta che il KeyStore è stato caricato, possiamo usare il TrustManager che 
 String tmfAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
 TrustManagerFactory tmf = TrustManagerFactory.getInstance(tmfAlgorithm);
 tmf.init(keyStore);
+
 // Create an SSLContext that uses the TrustManager
 // SSLContext context = SSLContext.getInstance("TLS");
 sslContext.init(null, tmf.getTrustManagers(), null);
 ```
 
-L'implementazione dell'app potrebbe essere diversa, potrebbe fare il pinning rispetto alla sola chiave pubblica, all'intero certificato o a tutta la certificate chain.
+L'implementazione dell'app potrebbe essere diversa, 
+potrebbe fare il pinning rispetto alla sola chiave pubblica, 
+all'intero certificato o 
+a tutta la certificate chain.
 
 #### Network Libraries and WebViews
 
@@ -301,9 +307,9 @@ Dopo aver eseguito queste operazioni, reimpacchetta l'app usando apktool e insta
 Il bypassing dinamico della logica di pinning è il metodo più conveniente dato che non è necessario raggirare alcun controllo di integrità e i tentativi di trial & error sono più veloci.
 La parte più difficile è l'individuazione del metodo corretto su cui fare hooking e può richiedere del tempo in base al livello di obfuscation.
 Dato che gli sviluppatori di solito riusano le librerie esistenti, è utile cercare stringhe e file di licenza che identificano la libreria usata.
-Una volta indiviudata la libreria usata, esamina il codice sorgente non obfuscated per trovare i metodi sui quali si può fare dynamic instrumentation.
+Una volta indiviudata la libreria usata, esamina il codice sorgente non offuscato per trovare i metodi sui quali si può fare dynamic instrumentation.
 
-Ad esempio, cosideriamo un'app che usa una libreria OkHTTP3 obfuscated.
+Ad esempio, cosideriamo un'app che usa una libreria OkHTTP3 offuscata.
 Dalla documentazine possiamo capire che la classe CertificatePinner.Builder è responsabile dell'aggiunta dei pin per specifici domini.
 Se puoi modificare gli argomenti al metodo Builder.add, puoi cambiare gli hash aggiungendo quelli corrispondenti al tuo certificato.
 Puoi trovare il metodo corretto in due modi:
@@ -324,7 +330,7 @@ Uno di essi stamperà il domain name e l'hash del certificato, dopo di che puoi 
 
 ### Trust Anchors
 
-Su Android 7.0 o superiore, le app usano una Network Security Configuratin di default che non si fida delle CA aggiunte dall'utente, riducendo i possibili MITM dopo aver spinto l'utente a installare una CA malevola.
+Su Android 7.0 o superiore, le app usano una Network Security Configuratin di default che non si fida delle CA aggiunte dall'utente, riducendo i possibili MITM dopo che l'attaccante ha convinto l'utente a installare una CA malevola.
 Questa protezione può essere raggirata usando una Network Security Configuration custom con un trust anchor custom che indica che l'app si fida delle CA aggiunte dall'utente.
 
 ### Static Analysis
@@ -363,7 +369,9 @@ Se ci sono `<trust-anchors>` custom in un `<base-config>` o `<domain-config>`, c
 </network-security-config>
 ```
 
-Se un valore non è impostato in un'entry `<domain-config\>` o in un nodo padre `<domain-config\>`, le configurazioni saranno basate su `<base-config\>`, diversamente se non definite in questa entry, verrà applicata la configurazione di default.
+Se un valore non è impostato in un'entry `<domain-config\>` o in un nodo padre `<domain-config\>`, 
+le configurazioni saranno basate su `<base-config\>`, 
+diversamente se non definite in questa entry, verrà applicata la configurazione di default.
 La configurazione di default delle app per Android 9 o superiore è:
 
 ```xml
@@ -405,7 +413,7 @@ Potrebbero esserci degli scenari in cui non è necessario e in cui puoi fare att
 
 - quando l'app è in esecuzione su un device con Android 7.0 o successivi, ma l'app è stata compilata per API level inferiori a 24, non userà il file di Network Security Configuration.
 Si fiderà invece di qualsiasi CA caricata dall'utente
-- quando l'app è in esecuzione su un device con Android 7.0 o successivi e non è presente una Network Security Configuration custom implementata nell'app
+- quando l'app è in esecuzione su un device con Android 7.0 o successivi e non è presente una Network Security Configuration custom nell'app
 
 ## Testing the Security Provider (MSTG-NETWORK-6)
 

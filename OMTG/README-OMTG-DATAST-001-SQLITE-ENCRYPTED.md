@@ -20,7 +20,7 @@ private void SQLiteEnc() {
 
 Exploit:
 
-- crea uno script Frida per fare l'hooking del metodo `SQLiteDatabase.openOrCreateDatabase()` in modo da recuperare il valore del secondo parametro
+- crea uno script Frida per fare l'hooking del metodo `SQLiteDatabase.openOrCreateDatabase()` in modo da recuperare la password
 
 ```javascript
 Java.perform(function () {

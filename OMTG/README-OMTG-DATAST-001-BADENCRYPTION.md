@@ -40,7 +40,7 @@ Exploit:
 
 - la funzione `encrypt` fa uno XOR e il flip dei byte della stringa `vJqfip28ioydips=` decodificata
 
-- esegui il seguente codice Java
+- esegui il seguente codice Java per ottenere la password
 
 ```java
 import java.util.Base64;

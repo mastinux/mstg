@@ -23,7 +23,7 @@ questa permission viene data solo alle app embedded nella system image o firmate
 
 Le permission sono applicate tramite l'attributo `android:permission` nel tag `<activity>` nel manifest.
 Queste permission restringono le applicazioni che possono lanciare l'activity.
-Queste permission vengono verificate durante `Context.startActivity` e `Activity.startActivityForResult`.
+Vengono verificate durante `Context.startActivity` e `Activity.startActivityForResult`.
 Se non si posseggono le permission richieste viene lanciata una `SecurityException`.
 
 #### Service Permission Enforcement
@@ -69,7 +69,7 @@ Quando si avvia o si restiuisce il risutato di un'activity, il metodo può impos
 In questo modo si dà la permission all'activity per la specifica URI indipendentemente se ha le permission per accedere ai dati dal content provider.
 Si realizza un modello comune secondo capability in cui le interazioni dell'utente portano alla concessione ad-hoc di permission fine-grained.
 Ciò può ridurre le permission richieste dalle app a quelle direttamente collegate al loro comportamento.
-Senza l'impiego di questo modello, utenti malevoli potrebbero accedere agli allegati di email di altri membri o recuperare una lista di contatti tramite URI non protette.
+Senza l'impiego di questo modello, gli utenti malevoli potrebbero accedere agli allegati di email di altri membri o recuperare una lista di contatti tramite URI non protette.
 Nel manifest l'attributo `android:grantUriPermissions` o il node aiutano a restringere le URI.
 
 #### Custom Permissions
@@ -90,7 +90,7 @@ Dato che un utente può revocare una permission dangerous per un'app, lo svilupp
 <uses-permission android:name="android.permission.INTERNET" />
 ```
 
-Analizza le permission insieme allo sviluppatore per identificare il motivo del loro utilizzo e rimuovi quelle non necessarie.
+Analizza le permission insieme agli sviluppatori per identificare il motivo del loro utilizzo e rimuovi quelle non necessarie.
 Oltre ad analizzare manualmente il file AndroidManifest.xml, puoi usare il Android Asset Packaging Tool per esaminare le permission.
 
 ```sh
@@ -101,14 +101,12 @@ uses-permission: android.permission.SYSTEM_ALERT_WINDOW
 uses-permission: android.permission.INTERNAL_SYSTEM_WINDOW
 ```
 
-\# FIXME prova comando aapt
-
 #### Custom Permissions
 
 Oltre a imporre delle permission custom tramite il file AndroidManifest.xml, puoi anche controllare le permission a livello di codice.
 Questo approccio non è raccomandato, perchè è error-prone e può essere raggirato più facilmente, ad esempio tramite runtime instrumentation.
 Si raccomanda di invocare il metodo `ContextCompat.checkSelfPermission` per controllare se un'activity ha una permission specifica.
-Quando trovi del codice come quello che segue, assicurati che le stesse permission siano imposte nel file AndroidManifest.xml.
+Quando trovi del codice come quello che segue, assicurati che le stesse permission siano impostate nel file AndroidManifest.xml.
 
 ```java
 private static final String TAG = "LOG";
@@ -168,14 +166,16 @@ Nota che se devi fornire informazioni o spiegazioni all'utente, è necessario fa
 
 #### Handling Responses to Permission Requests
 
-L'app deve fare l'override del metodo `onRequestPermissionsResult` per verificare se la permission è stata data.
+L'app deve fare l'override del metodo `onRequestPermissionsResult` per verificare se la permission è stata concessa.
 Questo metodo riceve l'integer `requestCode` come parametro (che è lo stesso codice di richiesta che è stato creato in `requestPermissions`).
 La seguente callback potrebbe usare `WRITE_EXTERNAL_STORAGE`.
 
 ```java
 @Override //Needed to override system method onRequestPermissionsResult()
-public void onRequestPermissionsResult(int requestCode, //requestCode is what you specified in requestPermissions()
-	String permissions[], int[] permissionResults) {
+public void onRequestPermissionsResult(
+	int requestCode, //requestCode is what you specified in requestPermissions()
+	String permissions[], 
+	int[] permissionResults) {
 		switch (requestCode) {
 			case MY_PERMISSIONS_WRITE_EXTERNAL_STORAGE: {
 				if (grantResults.length > 0
@@ -185,6 +185,7 @@ public void onRequestPermissionsResult(int requestCode, //requestCode is what yo
 					// permission denied code goes here.
 					Log.v(TAG, "Permission denied");
 				}
+
 				return;
 			}
 			// Other switch cases can be added here for multiple permission checks.
@@ -192,7 +193,7 @@ public void onRequestPermissionsResult(int requestCode, //requestCode is what yo
 }
 ```
 
-Le permission dovrebbero essere richieste per ogni permission necessaria, anche se una permission simile dello stesso gruppo è già stata richiesta.
+Le permission dovrebbero essere richieste ogni volta che sono necessarie, anche se una permission simile dello stesso gruppo è già stata richiesta.
 Per esempio se `READ_EXTERNAL_STORAGE` e `WRITE_EXTERNAL_STORAGE` sono presenti in AndroidManifest.xml ma solo la permission per `READ_EXTERNAL_STORAGE` viene data, allora quando viene richiesta la permission per `WRITE_EXTERNAL_STORAGE` viene subito approvata senza richiederla all'utente.
 Questo avviene perchè le due permission appartengono allo stesso gruppo e non sono richieste esplicitamente.
 
@@ -200,7 +201,7 @@ Questo avviene perchè le due permission appartengono allo stesso gruppo e non s
 
 Verifica sempre se l'app richiede permission di cui ha effettivamente bisogno.
 Assicurati che non vengano richieste permission che non hanno a che fare con l'obiettivo dell'app.
-Per esempio: un gioco single player che richiede accesso a `android:permission.WRITE_SMS`, potrebbe non essere una buona idea.
+Per esempio: un gioco single player che richiede accesso a `android:permission.WRITE_SMS` risulta sospetto.
 
 ### Dynamic Analysis
 
@@ -258,7 +259,7 @@ verifica anche il test case "Testing Whether Sensitive Data Is Exposed via IPC M
 Un esempio di meccanismo di IPC vulnerabile è riportato di seguito.
 Puoi usare ContentProvider per accedere alle informazioni del database, e puoi interrogare i service per vedere se ritornano dati.
 Se i dati non vengono validati adeguatamente, il content provider potrebbe essere vulnerabile a SQL Injection.
-Vediamo un'implementazione di ContentProvider vulnerabile.
+Vediamo un'implementazione di un ContentProvider vulnerabile.
 
 ```xml
 <provider
@@ -267,7 +268,7 @@ Vediamo un'implementazione di ContentProvider vulnerabile.
 </provider>
 ```
 
-Ispezioniamo la funzione `query` in `OMTG_CODING_003_SQL_Injection_Content_Provider_Implementation.java`.
+Analizziamo la funzione `query` in `OMTG_CODING_003_SQL_Injection_Content_Provider_Implementation.java`.
 
 ```java
 @Override
@@ -355,8 +356,7 @@ La classe caricata viene eseguita all'interno del context dell'app che esporta l
 Sfruttando questa vulnerabilità, un attaccante può invocare fragment all'interno dell'app target o eseguire codice presente in altri costruttori delle classi.
 Qualsiasi classe che sia passata all'intent e che non estenda la classe Fragment causerebbe una `java.lang.CastException`, ma il costruttore vuoto verrebbe eseguito prima che l'exception venga lanciata, consentendo al codice presente nel costruttore della classe di essere eseguito.
 
-Per impedire questa vulnerabilità, un nuovo metodo chiamato `isValidFragment` è stato aggiunto in Android 4.4.
-Consente agli sviluppatori di farne l'override e di definire i fragment che possono essere usati in questo contesto.
+Per risolvere questa vulnerabilità, in Android 4.4 è stato aggiunto il metodo `isValidFragment`, che consente agli sviluppatori di farne l'override e di definire i fragment che possono essere usati in questo contesto.
 L'implementazione di default restituisce `true` nelle versioni precedenti ad Android 4.4;
 lancia un'exception nelle versioni successive.
 
@@ -439,7 +439,7 @@ startActivity(i);
 
 ## Testing Custom URL Schemes (MSTG-PLATFORM-3)
 
-Sia Android che iOS consentono le comunicazioni tra app tramite URL scheme custom.
+Sia Android che iOS implementano comunicazioni tra app tramite URL scheme custom.
 Queste consentono alle altre app di eseguire specifiche azioni all'interno dell'app che offre l'URL schema custom.
 Le URI custom possono avere un qualsiasi prefix, e di solito definiscono un action da eseguire all'interno dell'app e i suoi parametri.
 
@@ -489,8 +489,10 @@ Il seguente codice può essere usato per recuperare i dati:
 
 ```java
 Intent intent = getIntent();
+
 if (Intent.ACTION_VIEW.equals(intent.getAction())) {
 	Uri uri = intent.getData();
+
 	String valueOne = uri.getQueryParameter("keyOne");
 	String valueTwo = uri.getQueryParameter("keyTwo");
 }
@@ -522,8 +524,10 @@ Quando invoca lo schema definito (`myapp://someaction/?var0=string&var1=string`)
 
 ```java
 Intent intent = getIntent();
+
 if (Intent.ACTION_VIEW.equals(intent.getAction())) {
 	Uri uri = intent.getData();
+
 	String valueOne = uri.getQueryParameter("var0");
 	String valueTwo = uri.getQueryParameter("var1");
 }
@@ -640,21 +644,26 @@ Di seguito si usano le app Sieve e Android Insecure Bank come esempio di identif
 Nell'app Sieve, troviamo tre activity exported:
 
 ```xml
-<activity android:excludeFromRecents="true" android:label="@string/app_name" android:launchMode="singleTask" an
-droid:name=".MainLoginActivity" android:windowSoftInputMode="adjustResize|stateVisible">
-<intent-filter>
-<action android:name="android.intent.action.MAIN"/>
-<category android:name="android.intent.category.LAUNCHER"/>
-</intent-filter>
+<activity android:excludeFromRecents="true" android:label="@string/app_name" 
+	android:launchMode="singleTask" android:name=".MainLoginActivity" 
+	android:windowSoftInputMode="adjustResize|stateVisible">
+	<intent-filter>
+		<action android:name="android.intent.action.MAIN"/>
+		<category android:name="android.intent.category.LAUNCHER"/>
+	</intent-filter>
 </activity>
-<activity android:clearTaskOnLaunch="true" android:excludeFromRecents="true" android:exported="true" android:fi
-nishOnTaskLaunch="true" android:label="@string/title_activity_file_select" android:name=".FileSelectActivity"/>
-<activity android:clearTaskOnLaunch="true" android:excludeFromRecents="true" android:exported="true" android:fi
-nishOnTaskLaunch="true" android:label="@string/title_activity_pwlist" android:name=".PWList"/>
+
+<activity android:clearTaskOnLaunch="true" android:excludeFromRecents="true" 
+	android:exported="true" android:finishOnTaskLaunch="true" 
+	android:label="@string/title_activity_file_select" android:name=".FileSelectActivity"/>
+
+<activity android:clearTaskOnLaunch="true" android:excludeFromRecents="true" 
+	android:exported="true" android:finishOnTaskLaunch="true" 
+	android:label="@string/title_activity_pwlist" android:name=".PWList"/>
 ```
 
 Analizzando l'activity `PWList.java`, vediamo che questa offre la possibilità di elencare, aggiungere e rimuovere le chiavi.
-Se la invochiamo direttamente, saremo in grado di raggirare la LoginActivity.
+Se la invochiamo direttamente, saremo in grado di raggirare l'activity LoginActivity.
 Si possono trovare maggiori falle con l'analisi dinamica.
 
 #### Services
@@ -721,7 +730,7 @@ Cerca nel codice sorgente stringhe del tipo
 `sendStickyBroadcast`.
 Assicurati che l'app non invii alcun dato sensibile.
 
-Se un intent inviato o ricevuto solo all'intendo dell'app, si può usare un `LocalBroadcastManager` per impedire alle altre app di ricevere il messaggio broadcast.
+Se un intent è inviato o ricevuto solo all'intendo dell'app, si può usare un `LocalBroadcastManager` per impedire alle altre app di ricevere il messaggio broadcast.
 In questo modo si riduce il rischio di rivelare informazioni sensibili.
 
 Per capire meglio a quale scopo il receiver è stato creato, è necessario proseguire con l'analisi statica e cercare la classe `android.content.BroadcastReceiver` e il metodo `registerReceiver`, che sono usati per creare dinamicamente i receiver.
@@ -761,7 +770,7 @@ public class MyBroadCastReceiver extends BroadcastReceiver {
 ```
 
 I broadcast receivers dovrebbero usare l'attributo `android:permission`;
-diversamente possono essere invocati dalle altre app.
+diversamente possono essere invocati da qualsiasi app.
 Puoi usare `Context.sendBroadcast(intent, receiverPermission)` per specificare quali permission un receiver deve avere per ricevere il messaggio broadcast.
 Puoi anche impostare un application package name specifico per limitare i componenti che possono accedere a questo intent.
 Se lasciato al valore di default (null), verranno considerati tutti i componenti di tutte le app.
@@ -816,7 +825,7 @@ dz> run app.provider.query content://com.mwr.example.sieve.DBContentProvider/Key
 | SuperPassword1234 | 1234 |
 ```
 
-Questo content provider può essere acceduto senza permessi.
+Questo content provider può essere acceduto senza permission.
 
 ```sh
 dz> run app.provider.update content://com.mwr.example.sieve.DBContentProvider/Keys/ --selection "pin=1234" --st
@@ -1008,7 +1017,7 @@ Il valore di default è `true` per Android 4.0.3 - 4.0.4 e inferirori mentre è 
 consente o meno a JavaScript in esecuzione in un context di un file scheme URL di accedere a un content di qualsiasi origine.
 Il valore di default è `true` per Android 4.0.3 - 4.0.4 e inferirori mentre è `false` per Android 4.1 e superiori.
 
-Se uno o più dei precedenti metodi è attivo, dovresti determinare se è veramente necessario per il funzionamento corretto dell'app.
+Se uno o più dei precedenti metodi è attivo, dovresti verificare se è effettivamente necessario per il funzionamento corretto dell'app.
 
 Se identifichi un'istanza di WebView, verifica se vengono caricati file locali con il metodo `loadURL`.
 
@@ -1030,7 +1039,7 @@ Environment.getExternalStorageDirectory().getPath() + "filename.html");
 L'URL specificata in `loadURL` dovrebbe essere controllata in caso di parametri dinamici che possono essere manipolati;
 la loro manipolazione potrebbe portare a local file inclusion.
 
-Usa i seguenti codice e best practice per disattivare gli handler di protocollo, se applicabili:
+Usa le seguenti best practice per disattivare gli handler di protocollo, se applicabili:
 
 ```java
 //If attackers can inject script into a WebView, they could access local resources. This can be prevented by disabling local file system access, which is enabled by default. You can use the Android WebSettings class to disable local file system access via the public method `setAllowFileAccess`.
@@ -1044,7 +1053,7 @@ webView.getSettings().setAllowUniversalAccessFromFileURLs(false);
 webView.getSettings().setAllowContentAccess(false);
 ```
 
-- crea una whitelist che definisce le pagine web locali e remote e i protocolli che possono essere caricati
+- crea una whitelist che definisce le pagine web locali e remote, e i protocolli che possono essere caricati
 - crea le checksum dei file locali HTML/JavaScript e verificali all'avvio dell'app.
 Applica il minifying del JavaScript per renderne più difficile la lettura
 
@@ -1146,7 +1155,7 @@ Esistono diversi modi per memorizzare dati in Android.
 #### Object Serialization
 
 Un oggetto e i suoi dati possono essere rappresentati come una sequenza di byte.
-Ciò viene realizzato tramite l'object serialization in Java.
+In Java viene realizzato tramite l'object serialization.
 La serializzazione non è intrinsecamente sicura.
 É solo un formato binario per memorizzare localmente i dati in un file .ser.
 La cifratura e la firma di dati serializzati è possibile quando le chiavi sono memorizzate in modo sicuro.
@@ -1177,7 +1186,7 @@ In questo modo sei in grado di leggere/scrivere l'oggetto con `ObjectInputStream
 
 Ci sono diversi modi per serializzare il contenuto di un oggetto in JSON.
 Android fornisce le classi `JSONObject` e `JSONArray`.
-Un'ampia varietà di librerie, tra cui GSON, Jackson, Moshi, può essere usata.
+Può essere usata un'ampia varietà di librerie, tra cui GSON, Jackson, Moshi.
 Le principali differenze tra le librerie sta nell'uso della reflection per la composizione dell'oggetto, nel supporto delle annotazioni, nella creazione di oggetti immutabili, e nella memoria usata.
 Nota che quasi tutte le rappresentazioni JSON sono String-based e quindi immutabili.
 Ciò significa che qualsiasi secret memorizzato in JSON sarà difficilmente rimovibile dalla memoria.
@@ -1284,7 +1293,7 @@ Poi, assicurati che la decifratura e la verifica delle chiavi siano ottenibili s
 Ci sono poche raccomandazioni generiche da seguire:
 
 - assicurati che i dati sensibili siano stati cifrati e firmati dopo la serializzazione/persistence.
-Valuta firma o HMAC prima di usare i dati.
+Verifica firma o HMAC prima di usare i dati.
 Guarda il capitolo sulla crittografia per maggiori dettagli
 - assicurati che le chiavi usate nel passo precedente non siano facilmente estraibili.
 L'utente e/o l'istanza dell'app dovrebbero essere autenticati/autorizzati adeguatamente prima di ottenere le chiavi.
@@ -1331,7 +1340,8 @@ Per `Jackson` cerca:
 #### ORM
 
 Quando usi una libreria ORM, assicurati che i dati siano memorizzati in un database cifrato e le rappresentazioni delle classi siano cifrate individualmente prima di essere memorizzate.
-Guarda il capitolo sul data storage e sul cryptographic management per maggiori dettagli. Puoi cercare le seguenti parole chiave per le corrispondenti librerie.
+Guarda il capitolo sul data storage e sul cryptographic management per maggiori dettagli.
+Puoi cercare le seguenti parole chiave per le corrispondenti librerie.
 
 Per`OrmLite` cerca:
 
@@ -1383,8 +1393,10 @@ Usa Intent espliciti e verifica che controlli di sicurezza addizionali siano app
 
 Ci sono diversi modi per eseguire un'analisi dinamica:
 
-- per la persistence effettiva: usa le tecniche descritte nel capitolo sul data storage
-- per gli approcci reflection-based: usa Xposed per fare l'hooking nei metodi di deserializzazione o aggiungi informazioni non processabili agli oggetti serializzati per vedere come vengono gestiti (es. se l'app va in crash o possono essere estratte informazioni extra tramite arricchimento degli oggetti)
+- per la persistence effettiva: 
+usa le tecniche descritte nel capitolo sul data storage
+- per gli approcci reflection-based: 
+usa Xposed per fare l'hooking nei metodi di deserializzazione o aggiungi informazioni non processabili agli oggetti serializzati per vedere come vengono gestiti (es. se l'app va in crash o possono essere estratte informazioni extra tramite arricchimento degli oggetti)
 
 ## Testing enforced updating (MSTG-ARCH-9)
 
@@ -1466,9 +1478,12 @@ if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
 
 Quando verifichi se il meccanismo di update è adeguato, assicurati l'uso di `AppUpdateManager`.
 Se non viene usato, allora gli utenti potrebbero usare versioni vecchie con delle vulnerabilità.
-Fai attenzione all'uso di `AppUpdateType.IMMEDIATE`: se arriva un aggiornamento di sicurezza, bisognerebbe usare questo flag per assicurarsi che l'utente non possa continuare a usare l'app senza fare l'aggiornamento.
-Come si vede dalla Part 3 dell'esempio: assicurati che cancellazioni o errori non ricadano in re-check e che l'utente non possa andare avanti in caso di aggiornamenti di sicurezza critici.
-Infine, nella Part 4: si può vedere che per ogni entry point dell'app, viene forzato un meccanismo di aggiornamento, in modo da renderne più difficile il bypass.
+Fai attenzione all'uso di `AppUpdateType.IMMEDIATE`: 
+se arriva un aggiornamento di sicurezza, bisognerebbe usare questo flag per assicurarsi che l'utente non possa continuare a usare l'app senza fare l'aggiornamento.
+Come si vede dalla Part 3 dell'esempio: 
+assicurati che cancellazioni o errori non ricadano in re-check e che l'utente non possa andare avanti in caso di aggiornamenti di sicurezza critici.
+Infine, nella Part 4: 
+si può vedere che per ogni entry point dell'app, viene forzato un meccanismo di aggiornamento, in modo da renderne più difficile il bypass.
 
 ### Dynamic Analysis
 

@@ -136,7 +136,7 @@ uid=10084(u0_a84) gid=10084(u0_a84) groups=10083(u0_a83),1004(input),1007(log),1
 
 Android Studio può essere usato per fare il debugging di un'app e verificare l'attivazione del debugging.
 
-Un altro metodo per verificare se un'app è debuggable è agganciarci `jdb` al processo in esecuzione.
+Un altro metodo per verificare se un'app è debuggable è agganciare `jdb` al processo in esecuzione.
 Se ciò è possibile, allora il debugging è attivo.
 
 La seguente procedura può essere usata per avviare una sessione di debugging con `jdb`:
@@ -225,7 +225,8 @@ L'analisi statica dovrebbe essere usata per verificare i simboli di debug.
 
 ## Testing for Debugging Code and Verbose Error Logging (MSTG-CODE-4)
 
-StrictMode è un tool per l'identificazione di violazioni, es. accessi a disco o rete accidentali nel thread principale dell'app.
+StrictMode è un tool per l'identificazione di violazioni, 
+es. accessi a disco o rete accidentali nel thread principale dell'app.
 Può anche essere usato per good cooding practice, come l'implementazione di codice performante.
 Segue un esempio di `StrictMode` con le policy per accesso a disco e rete abilitate per il thread principale:
 
@@ -294,13 +295,13 @@ Queste librerie accelerano lo sviluppo dato che lo sviluppatore deve scrivere me
 Ci sono due categorie di librerie:
 
 - librerie che non sono (o non dovrebbero essere) incluse nell'app di produzione finale, 
-come `Mockito` usato per il testing e librerie o
-come `JavaAssist` usato per compilare altre librerie
+come `Mockito` usato per il testing 
+e librerie come `JavaAssist` usato per compilare altre librerie
 - librerie che sono incluse nell'app di produzione finale, come `Okhttp3`
 
 Queste librerie potrebbero avere le seguenti due classi di effetti collaterali non voluti:
 
-- una libreria può contenere una vulnerabilità, che renderà l'applicazione vulnerabile.
+- una libreria può contenere una vulnerabilità, che renderebbe l'applicazione vulnerabile.
 Un buon esempio sono le versioni di `OKHTTP` prima di 2.7.5 in cui era possibile la TLS chain pollution per il bypass dell'SSL pinning
 - una libreria può usare una licenza, come LGPL2.1, che richiede all'autore dell'app di dare accesso al codice sorgente a coloro che usano l'app.
 Risulta poi possibile redistribuire l'app con modifiche al suo codice sorgente.
@@ -324,6 +325,7 @@ buildscript {
 	repositories {
 		mavenCentral()
 	}
+
 	dependencies {
 		classpath 'org.owasp:dependency-check-gradle:3.2.0'
 	}
@@ -353,21 +355,21 @@ Analogamente, per Xamarin, è necessario verificare le dipendenze di C#.
 - la libreria è inclusa nell'app?
 Controlla se la libreria ha una versione in cui la vulnerabilità è patched. 
 Se non lo è, verifica se la vulnerabilità impatta sull'app.
-Se è il caso o potrebbe succedere nel futuro, cerca un'alternativa che fornisce funzionalità simili, ma senza vulnerabilità
+Se è il caso o potrebbe succedere nel futuro, cerca un'alternativa che fornisca funzionalità simili, ma senza vulnerabilità
 - la libreria non è inclusa nell'app? 
-Controlla se esiste una versione patched in cui la vulnerabilità è stata patched.
+Controlla se esiste una versione in cui la vulnerabilità è stata patched.
 Se non lo è, controlla se la vulnerabilità impatta l'app.
 La vulnerabilità può bloccare la compilazione o indebbolire la sicurezza della build-pipeline?
-Poi cerca un'alternativa in cui la vulnerabilità viene risolta
+Poi cerca un'alternativa in cui la vulnerabilità viene patched
 
 Quando i sorgenti non sono disponibili, puoi decompilare l'app e verificare i file jar.
 Quando Dexguard o Proguard sono applicati adeguatamente, le informazioni sulla versione della libreria sono spesso offuscate.
 Altrimenti, puoi trovare informazioni nei commenti dei file Java della libreria stessa.
-Se puoi risalire alla versione della libreria, tramite i commenti o tramite speicifici metodi usati in certe versioni, puoi ricercare manulamente i relativi CVE.
+Se puoi risalire alla versione della libreria, tramite i commenti o tramite specifici metodi usati in certe versioni, puoi ricercare manulamente i relativi CVE.
 
 #### Detecting the licenses used by the libraries of the application
 
-Per assicurarti che le leggi di copyright non siano infrante, puoi controllare le dipendenze usando un plugin che itera nelle diverse librerie, come `License Gradle Plugin`.
+Per assicurarti che il copyright non sia violato, puoi controllare le dipendenze usando un plugin che itera nelle diverse librerie, come `License Gradle Plugin`.
 Questo plugin può essere usato seguendo i seguenti passi.
 
 Nel tuo build.gradle aggiungi:
@@ -392,7 +394,8 @@ Come per il controllo delle dipendenze, ci sono tool commerciali in grado di con
 
 > Nota: se hai dubbi sulle implicazioni di un modello di licenza usato da una libreria di terze parti, consulta uno specialista legale
 
-Quando una libreria contiene una licenza in cui la proprietà intellettuale dell'app deve essere resa pubblica, verifica se esiste un'alternativa per la libreria che può essere usata per fornire funzionalità simili.
+Quando una libreria contiene una licenza in cui la proprietà intellettuale dell'app deve essere resa pubblica, 
+verifica se esiste un'alternativa per la libreria che può essere usata per fornire funzionalità simili.
 
 Nota: in caso di app ibrida, controlla il tool di build usato, molti hanno un plugin di enumerazione di licenze per trovare le licenze usate.
 
@@ -405,13 +408,13 @@ Se puoi recuperare la versione della libreria, anche tramite i commenti o tramit
 ### Dynamic Analysis
 
 L'analisi dinamica di questa sezione consiste nel controllare se si è aderito ai copyright delle licenze.
-Ciò spesso significa che l'app dovrebbe avere una sezione `about` o `EULA`in cui le dichiarazioni di cocpyright sono annotate come richiesto nelle licenze delle librerie di terze parti.
+Spesso significa che l'app dovrebbe avere una sezione `about` o `EULA` in cui le dichiarazioni di cocpyright sono annotate come richiesto nelle licenze delle librerie di terze parti.
 
 ## Testing Exception Handling (MSTG-CODE-6 and MSTG-CODE-7)
 
 Le eccezioni si verificano quando un'app giunge a uno stato anormale o di errore.
 Sia Java che C++ possono lanciare eccezioni.
-Il testing della gestione delle eccezioni consiste nell'assicurare che l'app le gestisca adeguatamente ed entri in uno stato stabile senza esporre informazioni sensibili tramite l'interfaccia utente o i meccanismi di logging.
+Il testing della gestione delle eccezioni consiste nell'assicurarsi che l'app le gestisca adeguatamente ed entri in uno stato stabile senza esporre informazioni sensibili tramite l'interfaccia utente o i meccanismi di logging.
 
 ### Static Analysis
 
@@ -535,14 +538,17 @@ riferimenti a TimerTask.
 
 Ci sono diversi passi da seguire:
 
-- in caso di codice nativo: usa Valgrind o Mempatrol per analizzare l'uso della memoria e le chiamate eseguite dal codice
-- in caso di codice Java/Kotlin, prova a ricompilare l'app usando il plugin leak canary di Square.
+- in caso di codice nativo: 
+usa Valgrind o Mempatrol per analizzare l'uso della memoria e le chiamate eseguite dal codice
+- in caso di codice Java/Kotlin: 
+prova a ricompilare l'app usando il plugin leak canary di Square.
 - individua i leakage con il Memory Profiler di Android Studio
 - individua le vulnerabilità di serializzazione con l'Android Java Deserialization Vulnerability Tester
 
 ## Make Sure That Free Security Features Are Activated (MSTG-CODE-9)
 
-Dato che il decompilare le classi Java è banale, si raccomanda l'applicazione di un offuscamento base al byte-code nella build di release.
+Dato che il decompilare le classi Java è banale, 
+si raccomanda l'applicazione di un offuscamento base al byte-code nella build di release.
 ProGuard offre un modo facile per minificare e offuscare il codice e per rimuovere informazioni di debugging non necessarie da qualsiasi byte-code dell'app.
 Sostituisce gli identifier, come nomi di classi, nomi di metodi, e nomi di variabili, con stringhe senza un significato.
 Questo è un tipo di offuscamento, che è "gratis" nel senso che non impatta le performance dell'app.
@@ -560,7 +566,7 @@ Perciò, è importante verificare il file di configurazione di ProGuard per capi
 Il metodo `getDefaultProguardFile('proguard-android.txt')` recupera il file di configurazione di default dalla directory `<Android SDK>/tools/proguard`.
 Nel file `proguard-rules.pro` puoi definire regole ProGuard custom.
 Puoi notare che molte classi estese nel file `proguard-rules.pro` di esempio sono classi Android comuni.
-Dovrebbe essere definito più nello specifico per le classi o le librerie.
+Dovrebbe essere definito più nello specifico per le classi o per le librerie.
 
 Di default, ProGuard rimuove gli attributi che sono utili per il debug, come line number, nomi di file sorgente, e nomi di variabili.
 ProGuard è un tool Java free che fa da shrinker, optimizer, obfuscator e pre-verifier.

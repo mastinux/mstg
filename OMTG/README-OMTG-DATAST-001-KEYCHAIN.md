@@ -20,5 +20,6 @@ startActivity(createInstallIntent);
 
 Exploit:
 
-- il codice è esso stesso l'exploit, l'utente viene spinto a installare un certificato root (contenuto nell'app) sul suo device.
-In questo modo l'attaccante è in grado di ispezionare il traffico in uscita dal device e in entrata nel device
+- il codice è esso stesso l'exploit, 
+l'utente viene spinto a installare un certificato root (contenuto nell'app) sul suo device nella KeyChain.
+In questo modo intercettando il traffico, l'attaccante è in grado di ispezionarlo e modificarlo

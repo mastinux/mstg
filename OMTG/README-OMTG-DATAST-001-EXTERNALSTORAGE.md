@@ -16,4 +16,3 @@ Solo i dati memorizzati all'interno di `/data/data/<package-name>` vengono rimos
 Exploit:
 
 - `$ adb shell cat /sdcard/password.txt`
-

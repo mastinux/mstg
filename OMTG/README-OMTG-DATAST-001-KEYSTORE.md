@@ -90,8 +90,8 @@ this.decryptedText.setText(new String(bArr, 0, bArr.length, StringEncodings.UTF8
 Le coppie di chiavi generate tramite il `Keystore` vengono memorizzate in `/data/misc/keystore/user_0`.
 I file che le contengono sono cifrati.
 
+Il codice mostra un esempio di implementazione dell'uso dell'Android Keystore che ne impedisce l'estrazione.
+
 Exploit:
 
-- crea uno script Frida per fare l'hooking del metodo `init()` per recuperare la chiave pubblica e la chiave privata.
-
-- \# TODO
+- NONE

@@ -29,4 +29,3 @@ table|Accounts|Accounts|4|CREATE TABLE Accounts(Username VARCHAR,Password VARCHA
 ```
 admin|AdminPass
 ```
-

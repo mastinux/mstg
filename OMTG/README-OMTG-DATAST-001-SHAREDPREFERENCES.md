@@ -14,4 +14,3 @@ edit.commit();
 Exploit:
 
 - `$ adb shell cat /data/user/0/sg.vp.owasp_mobile.omtg_android/shared_prefs/sg.vp.owasp_mobile.omtg_android_preferences.xml`
-
