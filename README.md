@@ -57,7 +57,7 @@
 - [Android Network APIs](./MSTG/README-MSTG-ANA.md)
 - [Android Platform APIs](./MSTG/README-MSTG-APA.md)
 - [Code Quality and Build Settings for Android Apps](./MSTG/README-MSTG-CQBSAA.md)
-- [Tampering and Reverse Engineering on Android](./MSTG/README-MSTG-TRE.md)
+- [Tampering and Reverse Engineering on Android](./MSTG/README-MSTG-TREA.md)
 - [Android Anti-Reversing Defenses](./MSTG/README-MSTG-AARD.md)
 
 #### iOS Testing Guide
