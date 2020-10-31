@@ -636,10 +636,380 @@ $ objection explore
 
 ### Debugging
 
-267
+Finora, hai usato tecniche di analisi statica senza eseguire l'app.
+Nella pratica, specialmente quando si fa il reversing di malware o app più complesse, la pura analisi statica è difficile.
+L'osservazione e la manipolazione di un'app a run time rende molto più semplice il processo di comprensione del suo comportamento.
+Successivamente, daremo un'occhiata ai metodi di analisi dinamica che possono aiutarci a raggiungere questo obiettivo.
+
+Le app Android supportano due tipi diversi di debugging:
+debugging a run time di Java con la Java Debug Wire Protocol (JDWP) e
+debugging ptrace-based Linux/Unix a livello nativo,
+entrambi sono utili ai reverse engineer.
+
+#### Debugging Release Apps
+
+Dalvik e ART supportano il JDWP, un protocollo per la comunicazione tra il debugger e la Java VM.
+JDWP è un protocollo di debugging standard che è supportato da tutti i tool a linea di comando e gli IDE, inclusi jdb, JEB, IntelliJ ed Eclipse.
+L'implementazione di Android di JDWP include anche il supporto a feature extra implementate dal Dalvik Debug Monitor Server (DDMS).
+
+Un debugger JDWP ti permette di procedere a step nel codice Java, impostare breakpoint sui metodi Java, e ispezionare e modificare le variabili locali e di istanza.
+Userai un debugger JDWP la maggior parte delle volte in cui farai il debug di app Android "normali" (es. app che non fanno molte chiamate a librerie native).
+
+Nella sezione che segue, mostreremo come risolvere l'UnCrackable App per Android Level 1 col solo jdb.
+Nota che questo non è un modo efficiente per risolvere i crackme.
+Potresti fare più velocemente con Frida e altri metodi, che presenteremo più avanti in questa guida.
+Tuttavia, questo serve come introduzione alle opportunità di un Java debugger.
+
+#### Debugging with jdb
+
+Il tool `adb` è stato introdotto nel capitolo "Android Basic Security Testing".
+
+Per lanciare l'app in debug mode usa:
+
+```sh
+adb shell am start -D "owasp.mstg.uncrackable1/sg.vantagepoint.uncrackable1.MainActivity"
+```
+
+A questo punto l'app è in attesa della connessione del debugger.
+
+Puoi usare il comando `adb jdwp` per elencare i process id di tutti i processi debuggable in esecuzione sul device connesso.
+Col comando `adb forward`, puoi aprire un socket in ascolto sulla tua macchina e fare il forward del traffico TCP in entrata verso JDWP di un processo a scelta.
+
+```sh
+$ adb jdwp
+12167	
+$ adb forward tcp:7777 jdwp:12167
+```
+
+Ora sei pronto ad agganciare jdb.
+Agganciare il debugger, tuttavia, forza l'app a ripartire che è quello che non vuoi.
+Vuoi tenerla sospesa in modo da poterla esplorare.
+Per impedire al processo di ripartire, fai il pipe del comando `suspend` in jdb (fai attenzione che il $ nel comando da lanciare è riferito alla shell dell'utente, non è parte del comando da lanciare):
+
+```sh
+$ { echo "suspend"; cat; } | jdb -attach localhost:7777
+Initializing jdb ...
+> All threads suspended.
+>
+```
+
+Sei ora agganciato al processo sospeso e pronto ad andare avanti con i comandi jdb.
+Inserendo `?` ottieni la lista completa dei comandi.
+Sfortunatamente, l'Android VM non supporta tutte le feature JDWP disponibili.
+Per esempio, il comando `redefine`, che permette di ridefinire il codice di una classe non è supportato.
+Un'altra importante restrizione è che i breakpoint su linea di codice non funzioneranno perchè il bytecode di release non contiene le informazioni di linea di codice.
+Comunque, il breakpoint sui metodi funziona.
+I comandi utili sono:
+
+- classes: 
+lista di tutte le classi caricate
+- class/method/fields class id: 
+stampa i dettagli di una classe e lista i suoi metodi e campi
+- locals: 
+stampa le variabili locali nello stack frame corrente
+- print/dump expr: 
+stampa informazioni su un /oggetto
+- stop in method: 
+imposta un breakpoint per un metodo
+- clear method: 
+rimuove un breakpoint per un metodo
+- set lvalue = expr: 
+assegna un nuovo valore a un elemento field/variable/array
+
+Rivediamo il codice decompilato dall'UnCrackable App Level 1 e pensa alle possibili soluzioni.
+Un buon approccio potrebbe essere sospendere l'app in uno stato in cui il secret è tenuto in clear text in una variabile in modo che possa essere recuperato.
+Sfortuantamente, non ci riuscirai se prima non risolvi il vincolo della root/tampering detection.
+
+Riguarda il codice e vedrai che il metodo `sg.vantagepoint.uncrackable1.MainActivity.a` motra il message box "This is unacceptable ...".
+Questo metodo crea un `AlertDialog` e imposta una listener class per l'evento `onClick`.
+Questa classe (chiamata `b`) ha una callback che chiude l'app una volta che l'utente clicca sul button "OK".
+Per impedire all'utente di annullare il dialog, viene invocato il metodo `setCancelable`.
+
+```java
+private void a(final String title) {
+	final AlertDialog create = new AlertDialog$Builder((Context)this).create();
+	create.setTitle((CharSequence)title);
+	create.setMessage((CharSequence)"This in unacceptable. The app is now going to exit.");
+	create.setButton(-3, (CharSequence)"OK", (DialogInterface$OnClickListener)new b(this));
+	create.setCancelable(false);
+	create.show();
+}
+```
+
+Puoi raggirare questo controllo con del tampering a run time.
+Con l'app in sospeso, imposta un breakpoint su `android.app.Dialog.setCancelable` e fai riprendere l'esecuzione dell'app.
+
+```sh
+> stop in android.app.Dialog.setCancelable
+Set breakpoint android.app.Dialog.setCancelable
+> resume
+All threads resumed.
+>
+Breakpoint hit: "thread=main", android.app.Dialog.setCancelable(), line=1,110 bci=0
+main[1]
+```
+
+L'app è ora sospesa alla prima istruzione del metodo `setCancelable`.
+Puoi stampare gli argomenti passati a `setCancelable` con il comando `locals` (gli argomenti non sono mostrati correttamente sotto "local variables")
+
+```sh
+main[1] locals
+Method arguments:
+Local variables:
+flag = true
+```
+
+Viene invocato `setCancelable(true)`, quindi questa non può essere la chiamata che stai cercando.
+Fai riprendere l'esecuzione del processo con il comando `resume`.
+
+```sh
+main[1] resume
+Breakpoint hit: "thread=main", android.app.Dialog.setCancelable(), line=1,110 bci=0
+main[1] locals
+flag = false
+```
+
+Ora hai raggiunto la chiamata a `setCancelable` con l'argomento `false`.
+Imposta la variabile a `true` con il comando `set` e fai riprendere l'esecuzione.
+
+```sh
+main[1] set flag = true
+	flag = true = true
+main[1] resume
+```
+
+Ripeti questo processo, impostando `flag` a `true` ogni volta che viene raggiunto il brackpoint, finchè l'alert box viene finalmente mostrato (il breakpoint verrà raggiunto dalle cinque alle sei volte).
+L'alert box dovrebbe essere a questo punto cancelable!
+Tocca lo screen in qualsiasi parte al di fuori del box e questo sparirà senza chiudere l'app.
+
+Ora che l'anti-tampering è fuori dai piedi, sei pronto ad estrarre il secret.
+Nella sezione "static analysis", hai visto che la string è decifrata con AES, poi confrontata con la string di input del message box.
+Il metodo `equals` della classe `java.lang.String` confronta la string di input con il secret.
+Imposta un breakpoint sul metodo `java.lang.String.equals`, inserisci un testo a caso nell'edit field, e tocca il button "verify".
+Non appena il breakpoint viene raggiunto, puoi leggere l'argomento del metodo con il comando `locals`.
+
+```sh
+> stop in java.lang.String.equals
+Set breakpoint java.lang.String.equals
+>
+Breakpoint hit: "thread=main", java.lang.String.equals(), line=639 bci=2
+
+main[1] locals
+
+Method arguments:
+Local variables:
+other = "radiusGravity"
+
+main[1] cont
+
+Breakpoint hit: "thread=main", java.lang.String.equals(), line=639 bci=2
+
+main[1] locals
+
+Method arguments:
+Local variables:
+other = "I want to believe"
+
+main[1] cont
+```
+
+Questa è la string in plaintext che stavi cercando.
+
+#### Debugging with an IDE
+
+Inserire un progetto in un IDE con i sorgenti decompilati è un trucco utilissimo che ti permette di impostare i breakpoint direttamente nel codice sorgente.
+Nella maggior parte dei casi, dovresti essere in grado di fare debugging step by step dell'app e ispezionare lo stato delle variabile tramite la GUI.
+L'esperienza non sarà delle migliori, dopo tutto non è il codice originale, quindi non sarai in grado di impostare i breakpoint nelle linee di codice e qualcosa potrebbe non funzionare.
+Di nuovo, il reversing del codice non è mai facile, e la navigazione e il debugging efficienti del codice Java è spesso il modo più conveniente di farlo.
+Un metodo simile è stato descritto nel blog [NetSPI](https://blog.netspi.com/attacking-android-applications-with-debuggers/).
+
+Per fare il debugging tramite IDE, prima crea il tuo progetto Android in IntelliJ e copia tutti i sorgenti Java decompilati (`main` e `res`) nel `src` folder vuoto come descritto sopra nella sezione "Reviewing Decompiled Java Code".
+Imposta un breakpoint nel metodo `onCreate` della classe `MainActivity.java`.
+
+Lancia l'app in debug mode da IntelliJ. 
+Quando l'esecuzione raggiungerà il breakpoint al metodo, avrai la possibilità di fare debugging step by step.
+
+L'app UnCrackable1 fa scattare i controlli di anti-debbugging e di anti-tampering nel metodo `onCreate`.
+Per questo è una buona idea impostare un breakpoint nel metodo `onCreate` poco prima dei controlli.
+
+Successivamente, procedi step by step nel metodo `onCreate` cliccando su "Force Step Into" nella Debugger view.
+L'opzione "Force Step Into" ti permette di fare il debug delle funzioni del framework Android e delle classi core di Java che sono normalmente ignorate dai debugger.
+
+Una volta che hai cliccato su "Force Step Into", il debugger si fermerà all'inizio del metodo successivo, che è il metodo `a` della classe `sg.vantagepoint.a.c`.
+Questo metodo cerca il binario "su" all'interno di una lista di directory (`/system/xbin` e altre).
+Dato che stai eseguendo l'app su un device rooted/emulatore, dovrai raggirare questo controllo manipolando le variabili e/o i valori di ritorno della funzione.
+
+Puoi vedere i nomi delle directory nella finestra delle "Variables" cliccando su "Step Over" nella Debugger view per entrarci e attraverso il metodo `a`.
+
+Entra nel metodo `System.getenv` con la feature "Force Step Into".
+
+Dopo aver ottenuto i nomi delle directory separate da punto e virgola, il cursore del debugger ritornerà all'inizio del metodo `a`, non alla prossima linea eseguibile.
+Ciò succede perchè stai lavorando sul codice decompilato e non sul codice sorgente.
+
+Se non vuoi fare il debugging delle classi Java core e Android, puoi uscire dalle funzioni cliccando su "Step Out" nella Debugger View.
+L'uso di "Force Step Into" potrebbe essere una buona idea una volta che hai raggiunto i sorgenti decompilati e fare "Step Out" per le classi Java core e Android.
+In questo modo si velocizza il debugging mentre si tengono d'occhio i valori di ritorno delle funzioni delle classi core.
+
+Dopo che il metodo `a` recupera i nomi delle directory, cercherà il binario `su` in queste directory.
+Per raggirare questo controllo, entra nel metodo di controllo e ispeziona il contenuto della variabile.
+Quando l'esecuzione raggiunge una location in cui il binario `su` potrebbe essere individuato, modifica una delle variabili contenente il nome del file o della directory premendo F2 o click destro e "Set Value"
+
+Dopo aver modificato il nome del binario o il nome della directory, `File.exists` dovrebbe ritornare `false`.
+
+In questo modo si raggira il primo controllo di root detection dell'app UnCrackable Level 1.
+I rimanenti controlli di anti-tampering e anti-debugging possono essere raggirati in modi simili in modo che tu possa ottenere il secret.
+
+Il secret viene verificato dal metodo `a` della classe `sg.vantagepoint.a`.
+Imposta un breakpoint sul metodo `a` e clicca su "Force Step Into" quando raggiungi il breakpoint.
+Poi, vai di single-step fino a raggiungere la chiamta a `String.equals`.
+Qui è dove l'input utente viene confrontato con il secret.
+
+Puoi vedere il secret nella view "Variables" quando giungi alla chiamta del metodo `String.equals`.
+
+#### Debugging Native Code
+
+In Android il codice nativo è impacchettato in librerie condivise ELF e viene eseguito come un qualsiasi altro programma Linux nativo.
+Per questo, puoi farne il debug con tool standard (incluso GDB e i debug built-in dell'IDE come IDA Pro e JEB) dato che supportano le architetture dei processori dei device (la maggior parte dei device è basata su chipset ARM, quindi di solito non ci sono problemi a riguardo).
+
+Imposta ora la tua app JNI demo, HelloWorld-JNI.apk, per il debugging.
+É la stessa apk che avevi scaricato in "Statically Analyzing Native Code".
+Usa `adb install` per installarla sul tuo device o emulatore.
+
+```sh
+$ adb install HelloWorld-JNI.apk
+```
+
+Se hai seguito le istruzioni all'inizio di questo capitolo, dovresti già avere l'Android NDK.
+Questa contiene versioni precompilate di dgbserver per diverse architetture.
+Copia il binario di dgbserver sul tuo device:
+
+```sh
+$ adb push $NDK/prebuilt/android-arm/gdbserver/gdbserver /data/local/tmp
+```
+
+Il comando `gdbserver --attach` aggancia dgbserver al processo in esecuzione e fa il binding dell'indirizzo IP e della porta specificat in `comm`, che in questo caso è il descriptor HOST:PORT.
+Avvia HelloWorldJNI sul device, poi connettiti al device e individua il PID del processo HelloWorldJNI (sg.vantagepoint.helloworldjni).
+Poi entra nella shell di root e aggancia `gdbserver`:
+
+```sh
+$ adb shell
+
+$ ps | grep helloworld
+u0_a164 12690 201 1533400 51692 ffffffff 00000000 S sg.vantagepoint.helloworldjni
+
+$ su
+
+# /data/local/tmp/gdbserver --attach localhost:1234 12690
+Attached; pid = 12690
+Listening on port 1234
+```
+
+Il processo è ora in sospeso, e `gdbserver` è in attesa di client sulla porta `1234`.
+Con il device connesso via USB, puoi fare il forward di questa porta a una porta locale dell'host con il comando `adb forward:`
+
+```sh
+$ adb forward tcp:1234 tcp:1234
+```
+
+Usa la versione precompilata di `gdb` inclusa nella toolchain di NDK.
+
+```sh
+$ $TOOLCHAIN/bin/gdb libnative-lib.so
+
+GNU gdb (GDB) 7.11
+(...)
+Reading symbols from libnative-lib.so...(no debugging symbols found)...done.
+
+(gdb) target remote :1234
+Remote debugging using :1234
+0xb6e0f124 in ?? ()
+```
+
+Ti sei agganciato al processo!
+Il problema è che è troppo tardi per fare il debug della funzione JNI `StringFromJNI`;
+viene eseguita solo una volta all'avvio.
+Puoi risolvere questo problema attivando l'opzione "Wait For Debugger".
+Vai in "Developer Options" -> "Select debug app" e scegli HelloWorldJNI, poi abilita lo switch di "Wait for debugger".
+Poi chiudi e rilancia l'app.
+Dovrebbe sospendersi in automatico.
+
+Il nostro obiettico è impostare un breakpoint alla prima istruzione della funzione nativa `Java_sg_vantagepoint_helloworldjni_MainActivity_stringFromJNI` prima della ripresa dell'esecuzione dell'app.
+Sfortunatamente, ciò non è possibile a questo punto dell'esecuzione perchè `libnative-lib.so` non è ancora mappata nella memoria del processo, viene caricata dinamicamente a run time.
+Per poter procedere, useremo JDB per cambiare lo stato del processo.
+
+Prima, riprendi l'esecuzione della Java VM agganciandoci JDB.
+Non vuoi però che il processo riprenda subito, allora fai il pipe del comando `suspend` in jdb.
+
+```sh
+$ adb jdwp
+14342
+
+$ adb forward tcp:7777 jdwp:14342
+
+$ { echo "suspend"; cat; } | jdb -attach localhost:7777
+```
+
+Poi, sospendi il processo dove il Java runtime carica `libnative-lib.so`.
+In JDB, imposta un breakpoint nel metodo `java.lang.System.loadLibrary` e fai riprendere l'esecuzione del processo.
+Dopo che il breakpoint è stato raggiunto, esegui il comando `step up`, che proseguirà l'esecuzione del processo fino a quando `loadLibrary` ritornerà.
+A questo punto, `libnative-lib.so` è stata caricata.
+
+```sh
+> stop in java.lang.System.loadLibrary
+
+> resume
+All threads resumed.
+Breakpoint hit: "thread=main", java.lang.System.loadLibrary(), line=988 bci=0
+
+> step up
+main[1] step up
+
+>
+Step completed: "thread=main", sg.vantagepoint.helloworldjni.MainActivity.<clinit>(), line=12 bci=5
+
+main[1]
+```
+
+Esegui `gdbserver` per agganciarti all'app in sospeso.
+In questo modo l'app sarà sospesa sia dalla Java VM che dal Linux kernel (creando uno stato di "double-suspension").
+
+```sh
+$ adb forward tcp:1234 tcp:1234
+
+$ $TOOLCHAIN/arm-linux-androideabi-gdb libnative-lib.so
+GNU gdb (GDB) 7.7
+Copyright (C) 2014 Free Software Foundation, Inc.
+(...)
+
+(gdb) target remote :1234
+Remote debugging using :1234
+0xb6de83b8 in ?? ()
+```
+
+FAI SCHEMA DI COMANDI LANCIATI E CONSEGUENZE
 
 ### Tracing
 
+278
+
+#### Execution Tracing
+
+##### Tracing System Calls
+
+##### Ftrace
+
+##### KProbes
+
 ### Emulation-based Analysis
 
+#### DroidScope
+
+#### PANDA
+
+#### VxStripper
+
 ### Binary Analysis
+
+#### Symbolic Execution
+
+### Tampering and Runtime Instrumentation
