@@ -5,15 +5,15 @@ In questo capitolo, analizzeremo alcune peculiarità dei tool di reversing in An
 
 Android offre ai reverse engineer grandi vantaggi che non sono disponibili in iOS.
 Dato che Android è open source, puoi studiare il suo codice sorgente dall'Android Open Source Project (AOSP) e modificare il SO e i suoi tool standard in qualsiasi modo tu voglia.
-Anche sui dispositivi standard è possibile attivare la developer mode e caricare app senza fare troppi salti mortali.
-Dall'insieme di tool offerti dall'SDK all'ampia gamma di tool di reverse engineering, ci sono diverse minuzie che possono facilitarti il lavoro.
+Anche sui dispositivi standard è possibile attivare la developer mode e caricare app senza fare tanti salti mortali.
+Dall'insieme di tool offerti dall'SDK all'ampia gamma di tool di reverse engineering, ci sono diversi trucchi che possono facilitarti il lavoro.
 
 Tuttavia, ci sono anche alcune sfide Android.
 Per esempio, dovrai avere a che fare sia con il Java byte-code che con il codice nativo.
 La Java Native Interface (JNI) a volte è usata per confondere i reverse engineer (ci sono ragioni legittime per usare JNI, come il miglioramento delle performance o il supporto di codice legacy).
 A volte gli sviluppatori usano il layer nativo per "nascondere" i dati e le funzionalità, e potrebbero strutturare le loro app in modo che l'esecuzione salti frequentemente tra i due layer.
 
-Avrai bisogno di almeno una conoscenza base dell'ambiente Android basato su Java e del SO e Kernel Linux, su cui Android è basato.
+Avrai bisogno di almeno una conoscenza base dell'ambiente Android basato su Java e del SO e kernel Linux, su cui Android è basato.
 Avrai bisogno anche dei tool giusti per gestire il bytecode in esecuzione su una JVM e il codice nativo.
 
 Useremo gli OWASP Mobile Security Testing Guide Crackmes come esempi per dimostrare diverse tecniche di reverse engineering nelle sezioni successive, quindi aspettati spoiler parziali o totali.
@@ -49,7 +49,7 @@ Li vedremo in questo capitolo.
 
 #### Building a Reverse Engineering Environment for Free
 
-Con un piccolo sforzo, puoi creare un buon ambiente di reverse engineering GUI-based gratuitamente.
+Con un piccolo sforzo, puoi creare gratuitamente un buon ambiente di reverse engineering GUI-based.
 
 Per la navigazione dei sorgenti decompilati, raccomandiamo IntelliJ, un IDE relativamente leggero e ottimo per la navigazione del codice.
 Consente debugging su device di base per app decompilate.
@@ -63,12 +63,12 @@ apktool è un tool gratuito famoso che può estrarre e disassemblare risorse dir
 In islandese è Assembler/Disassembler).
 apktool ti permette di riassemblare il package, che risulta utile per il patching e per l'applicazione di modifiche all'Android Manifest.
 
-Puoi eseguire compiti più complessi (come l'analisi del programma e il deoffuscamento automatico) con framework di reverse engineering gratuiti come Radare2 e Angr.
+Puoi svolgere compiti più complessi (come l'analisi del programma e il deoffuscamento automatico) con framework di reverse engineering gratuiti come Radare2 e Angr.
 Troverai diversi esempi per molti di questi tool e framework gratuiti in questa guida.
 
 #### Commercial Tools
 
-È possibile preparare un ambiente di reverse engineering gratuitamente.
+È possibile preparare gratuitamente un ambiente di reverse engineering.
 Tuttavia, esistono delle alternative commerciali.
 Quelle maggiormente usate sono:
 
@@ -82,12 +82,12 @@ Ovviamente, questa comodità non è gratis, e ora che JEB ha una licenza subscri
 Ha un debugger sia per applicazioni Java che per processi nativi.
 Con i suoi potenti script, disassembler ed estensioni, IDA Pro funziona benissimo per l'analisi statica di programmi nativi e librerie.
 Tuttavia, le capacità di analisi statica offerte per Java sono molto base: ottieni l'assembly Smali ma niente di più.
-Non puoi navigare nel package e nella struttura delle classi, e alcune azioni (come il renaming delle classi) non possono essere eseguite, che per alcune app più complesse potrebbe essere fastidioso.
-Inoltre, a meno che tu non possa avere la versione a pagamento, non sarà d'aiuto durante il reverse engineering di codice nativo dato che la versione freeware non supporta i processori ARM.
+Non puoi navigare nel package e nella struttura delle classi, e alcune azioni (come il renaming delle classi) non possono essere eseguite, che per alcune app più complesse è strettamente necessario.
+Inoltre, a meno che tu non possa avere la versione a pagamento, non sarà d'aiuto durante il reverse engineering di codice nativo dato che la versione freeware non supporta i processori ARM
 
 ### Disassembling and Decompiling
 
-Nel security testing di app Android, se l'app è basata solo su Java e non ha alcun codice nativo (codice C/C++), il processo di reverse engineering è relativamente facile e recupera (decompila) quasi tutto il codice sorgente.
+Nel security testing di app Android, se l'app è basata solo su Java e non ha alcun codice nativo (codice C/C++), il processo di reverse engineering è relativamente facile ed è in grado di decompilare quasi tutto il codice sorgente.
 In questi casi, il black-box testing (con l'accesso al binario compilato, ma non al codice sorgente originale) può essere molto vicino al white-box testing.
 
 Tuttavia, se il codice è stato appositamente offuscato (o sono stati usati tool di anti decompilazione), il processo di reverse engineering potrebbe essere molto dispendioso e improduttivo.
@@ -101,6 +101,7 @@ Useremo l'app UnCrackable Level 1 per Android nei seguenti esempi.
 
 ```sh
 $ wget https://github.com/OWASP/owasp-mstg/raw/master/Crackmes/Android/Level_01/UnCrackable-Level1.apk
+
 $ adb install UnCrackable-Level1.apk
 ```
 
@@ -118,7 +119,7 @@ Puoi usare `dex2jar` o `enjarify`.
 
 Quando hai il file JAR, puoi usare un qualsiasi decompiler per recuperare il codice Java.
 In questo esempio useremo il decompiler CFR.
-CFR è in sviluppo attivo, e nuove release sono disponibili sul sito degli autori.
+CFR è in sviluppo attivo, e sono disponibili nuove release sul suo sito.
 CFR è rilasciato sotto licenza MIT, quindi puoi usarlo liberamente anche se il suo codice sorgente non è disponibile.
 
 Il modo più semplice per eseguire CFR è attraverso `apkx`, che include anche `dex2jar` e automatizza l'estrazione, la conversione e la decompilazione.
@@ -155,7 +156,7 @@ Scegli "next" e "Add no Activity", poi clicca su "finish".
 Una volta creato il progetto, espandi la vista "1: Project" sulla sinistra e naviga nel folder `app/src/main/java`.
 Tasto destro ed elimina il package di default `sg.vantagepoint.uncrackable1` creato da IntelliJ.
 
-Ora, apri la directory `Uncrackable-Level1/src` in un file browser e copia la directory `sg` nel folder `java` ora vuoto nella vista del progetto IntelliJ.
+Ora, apri la directory `Uncrackable-Level1/src` in un file browser e copia le directory `sg` nel folder `java` ora vuoto nella vista del progetto IntelliJ.
 
 Otterrai una struttura che somiglia al progetto Android Studio a partire dal quale l'app è stata creata.
 
@@ -164,7 +165,7 @@ Guarda la sezione "Reviewing Decompiled Java Code" qui sotto per imparare a ispe
 #### Disassembling Native Code
 
 Sia Dalvik che ART supportano la JNI, che definisce il modo con cui il codice Java interagisce con il codice nativo scritto in C/C++.
-Come in altri SO Linux-based, il codice nativo viene impacchettato (compilato) in librerie dinamiche ELF (.so), che l'app Android carica a run time tramite il metodo `System.load`.
+Come in altri SO Linux-based, il codice nativo viene impacchettato (compilato) in librerie dinamiche ELF (.so), che l'app Android carica a run time tramite il metodo `System.loadLibrary`.
 Tuttavia, invece di basarsi su librerie C diffuse (come glibc), i binari Android sono compilati rispetto a una libc custom chiamata Bionic.
 Bionic aggiunge un supporto per servizi specifici di Android come system properties e logging, e non è completamente compatibile con POSIX.
 
@@ -229,7 +230,7 @@ In essa troverai otto sotto directory ognuna col nome di un'architettura di proc
 Ognuna di queste contiene una versione della libreria nativa `libnative-lib.so` che è stata compilata per l'architettura del processore in questione.
 Quando viene invocata `System.loadLibrary`, il loader sceglie la versione corretta in base al device su cui l'app è in esecuzione.
 
-Secondo la naming convention menzionata prima, puoi aspettarti che la libreria esporti un simbolo chiamato `Java_sg_vantagepoint_helloworld_MainActivity_stringFromJNI`.
+Secondo la naming convention menzionata prima, la libreria dovrebbe esportare un simbolo col nome `Java_sg_vantagepoint_helloworld_MainActivity_stringFromJNI`.
 Sui sistemi Linux, puoi recuperare questa lista di simboli usando `readelf` (incluso nei binutils di GNU) o `nm`.
 Su Mac OS usa `greadelf`, che puoi installare tramite Macports o Homebrew.
 
@@ -295,8 +296,10 @@ Warning: aao experimental on 32bit binaries
 ```
 
 Nota che per binario più grandi, lanciare il comando direttamente col flag `-A` potrebbe rallentare molto l'esecuzione e potrebbe essere non necessario.
-In base al tuo obiettivo, potresti aprire il binario senza quest'opzione e applicare un'analisi meno complessa come `aa` o un'analisi più concreta come quella offerta da `aa` (analisi base per tutte le funzioni) o `aac` (analisi per le chiamate a funzione).
-Ricorda di digitare sempre `?` per visualizzare l'help o concatenalo a un comando per visualizzare più comando o opzioni.
+In base al tuo obiettivo, potresti aprire il binario senza quest'opzione e applicare un'analisi meno complessa come `aa` o 
+un'analisi più concreta come quella offerta da `aa` (analisi base per tutte le funzioni) o 
+`aac` (analisi per le chiamate a funzione).
+Ricorda di digitare sempre `?` per visualizzare l'help o concatenalo a un comando per visualizzare più comandi o opzioni.
 Per esempio, se digiti `aa?` vedrai la lista completa di comandi di analisi.
 
 ```sh
@@ -365,8 +368,8 @@ Quando analizzerai un'app più complessa, potrebbe diventare più difficile.
 Quando si analizza il codice offuscato, è buona pratica annotare i nomi delle classi, i nomi dei metodi e altri identificatori che individui scorrendo il codice.
 Apri la classe `MainActivity` nel package `sg.vantagepoint.uncrackable1`.
 Il metodo `verify` viene invocato quando tocchi il button "verify".
-Questo metodo passa l'imput utente al metodo statico `a.a`, che ritorna un valore booleano.
-Sembra plausibile che il metodo `a.a` verifichi l'input utente, quindi modificheremo il codice per applicare questo fatto.
+Questo metodo passa l'input utente al metodo statico `a.a`, che ritorna un valore booleano.
+Sembra plausibile che il metodo `a.a` verifichi l'input utente, quindi modificheremo il codice per modificarne il comportamento.
 
 ```java
 public void verify(View view) {
@@ -445,7 +448,7 @@ public static byte[] a(byte[] bArr, byte[] bArr2) {
 Sei arrivato a un buon punto: è un semplice AES-ECB.
 Sembra che la String Base64 presente in `check_input` sia il ciphertext.
 Viene decifrato con AES a 128 bit, poi confrontato con l'input utente.
-Prova a decifrare il ciphertext estratto e trova il valore segreto.
+Prova a decifrare il ciphertext estratto e trova il secret.
 
 Un modo più veloce per ottenere il valore decifrato è usare l'analisi dinamica.
 Rivedremo l'app UnCrackable Level1 più avanti per mostrare come (es. nella sezione Debugging).
@@ -488,12 +491,16 @@ Per vedere il suo disassembly esegui i seguenti comandi:
 
 Vediamo i comandi precedenti:
 
-- `e emu.str=true;` abilita l'emulazione tramite radare2.
+- `e emu.str=true;` 
+abilita l'emulazione tramite radare2.
 Grazie a questo comando possiamo vedere la string che stiamo cercando ("Hello from C++")
-- `s 0x00000e78` è un seek all'indirizzo `0x00000e78`, in cui si trova la nostra funzione.
+- `s 0x00000e78` 
+è un seek all'indirizzo `0x00000e78`, in cui si trova la nostra funzione.
 Lo eseguiamo in modo che i comandi successivi verranno applicati a questo indirizzo
-- `af` sta per analyze function
-- `pdf` sta per print disassembly of function
+- `af` 
+sta per analyze function
+- `pdf` 
+sta per print disassembly of function
 
 Usando radare2 puoi eseguire velocemente i comandi e uscire usando i flag `-qc '<commands>'`.
 Dai passi precedenti sappiamo cosa fare, li mettiamo tutti insieme:
@@ -553,7 +560,7 @@ L'indirizzamento relativo al PC permette al codice di essere eseguito indipenden
 
 `LDR.W R2, [R2, #0x29C]`
 
-Questa istruzione carica il puntatore a funzione dall'offset 0x29C nella tabella dei puntatori di funzioni JNI putato da R2.
+Questa istruzione carica il puntatore a funzione dall'offset 0x29C nella tabella dei puntatori di funzioni JNI puntato da R2.
 Corrisponde alla funzione `NewStringUTF`.
 Puoi cercare nella lista dei puntatori di funzione in jni.h, che è incluso nell'Android NDK.
 Il prototipo di funzione somiglia al seguente:
@@ -586,7 +593,7 @@ altri prendono in input l'apk compilata.
 Tieni presente che gli static analyzer potrebbero non essere in grado di invididuare tutti i problemi da soli anche se possono aiutarci a concentrarci su potenziali problemi.
 Analizza attentamente ciascun problema individuato e prova a capire che cosa sta facendo l'app per aumentare la probabilità di individuare nuove vulnerabilità.
 
-Configura adeguatamente lo static code analyzer per ridurre la probabilità di falsi positivi, e magari scegli solo alcune categorie di vulnerabilità da rilevare durante lo scan.
+Configura adeguatamente lo static code analyzer per ridurre i falsi positivi, e magari scegli solo alcune categorie di vulnerabilità da rilevare durante lo scan.
 I risultati degli static analyzer possono essere troppi, e i tuoi sforsi possono essere controproduttivi se devi investigare manualmente in un report esteso.
 
 Ci sono diversi tool open source per analisi di sicurezza automatizzata di un'apk.
@@ -601,7 +608,8 @@ Per i tool enterprise, guarda la sezione "Static Code Analysis" nel capitolo "Te
 ### Dynamic Analysis
 
 L'analisi dinamica testa l'app eseguendo il binario dell'app e analizzandone il flusso al fine di trovare delle vulnerabilità.
-Per esempio, le vulnerabilità riguardanti il data storage potrebbero essere difficili da individuare durante l'analisi statica, ma nell'analisi dinamica puoi facilmente individuare quali informazioni sono memorizzate in modo persistente e se queste sono protette adeguatamente.
+Per esempio, le vulnerabilità riguardanti il data storage potrebbero essere difficili da individuare durante l'analisi statica, 
+ma nell'analisi dinamica puoi facilmente individuare quali informazioni sono memorizzate in modo persistente e se queste sono protette adeguatamente.
 Oltre a questo, l'analisi dinamica permette al tester di identificare adeguatamente:
 
 - i flussi di business logic
@@ -616,20 +624,24 @@ Un'app può essere valutata tramite side-loading, re-packaging o semplicemente a
 I device non-rooted danno al tester due vantaggi:
 
 - replicare un ambiente in cui l'app viene eseguita normalmente
-- grazie a tool come objection, puoi fare il patching dell'app per testarla come se fossi su un device rooted (ma sei costretto a restare sempre all'interno della stessa app)
+- grazie a tool come objection, puoi fare il patching dell'app per testarla come se fossi su un device rooted (ma sei costretto a operare sempre all'interno della stessa app)
 
 Per analizzare dinamicamente l'app, puoi appoggiarti a objection che sfrutta Frida.
-Tuttavia, per poter usare objection su un device non-rooted devi eseguire un passo aggiuntivo: fare il patching dell'apk in modo che includa la libreria Frida gadget.
+Tuttavia, per poter usare objection su un device non-rooted devi eseguire un passo aggiuntivo: 
+fare il patching dell'apk in modo che includa la libreria Frida gadget.
 
 Per realizzare ciò, puoi lanciare i seguenti comandi:
 
 ```sh
 # Download the Uncrackable APK
 $ wget https://raw.githubusercontent.com/OWASP/owasp-mstg/master/Crackmes/Android/Level_01/UnCrackable-Level1.apk
+
 # Patch the APK with the Frida Gadget
 $ objection patchapk --source UnCrackable-Level1.apk
+
 # Install the patched APK on the android phone
 $ adb install UnCrackable-Level1.objection.apk
+
 # After running the mobile phone, objection will detect the running frida-server through the APK
 $ objection explore
 ```
