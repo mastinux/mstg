@@ -1005,26 +1005,207 @@ Remote debugging using :1234
 
 ### Tracing
 
-278
-
 #### Execution Tracing
+
+Oltre a essere utile per il debugging, JDB offre funzionalità di tracing.
+Per fare il tracing di un'app al suo avvio, puoi metterla in pausa con la feature "Wait for Debugger" o col comando `kill -STOP` e agganciare JDB per impostare un breakpoint su un qualsiasi metodo di inizializzazione.
+Quando il breakpoint viene raggiunto, attiva il tracing del metodo con il comando `trace go methods` e riprendi l'esecuzione.
+JDB farà il dump di tutte le entry e degli exit del metodo.
+
+```sh
+$ adb forward tcp:7777 jdwp:7288
+
+$ { echo "suspend"; cat; } | jdb -attach localhost:7777
+Set uncaught java.lang.Throwable
+Set deferred uncaught java.lang.Throwable
+Initializing jdb ...
+> All threads suspended.
+
+> stop in com.acme.bob.mobile.android.core.BobMobileApplication.<clinit>()
+Deferring breakpoint com.acme.bob.mobile.android.core.BobMobileApplication.<clinit>().
+It will be set after the class is loaded.
+
+> resume
+All threads resumed.M
+Set deferred breakpoint com.acme.bob.mobile.android.core.BobMobileApplication.<clinit>()
+Breakpoint hit: "thread=main", com.acme.bob.mobile.android.core.BobMobileApplication.<clinit>(), line=44 bci=0
+
+main[1] trace go methods
+
+main[1] resume
+Method entered: All threads resumed.
+```
+
+Il Dalvik Debug Monitor Server (DDMS) è un tool GUI incluso in Android Studio.
+Potrebbe non sembrare un gran chè, ma il suo tracer di metodi Java è uno dei tool più interessanti che puoi avere nel tuo arsenale, ed è indispensabile per analizzare il bytecode offuscato.
+
+DDMS può essere lanciato in diversi modi, e possono essere lanciate diverse viste di tracing in base a come il metodo viene tracciato.
+Esiste un tool standalone "Traceview" come anche un viewer built-in in Android Studio;
+entrambi offrono modi diversi di navigare nella trace.
+Di solito userai il viewer di Android Studio, che ti dà una timeline gerarchica e zoommabile delle chiamate al metodo.
+Il tool standalone, tuttavia, è anche utile; ha un profile panel che mostra il tempo speso in ogni metodo e i parent e i child di ogni metodo.
+
+Per registrare un'execution trace in Android Studio, apri il tab "Android" in fondo alla GUI.
+Scegli il processo target dalla lista e clicca sul button col piccolo cronometro sulla sinistra.
+In questo modo viene avviata la registrazione.
+Una volta finito, premi sullo stesso button per fermare la registrazione.
+La vista integrata della trace si aprirà e mostrerà la traccia registrata.
+Puoi scorrere e zoommare la vista della timeline con il mouse.
+
+Le execution trace possono anche essere registrate dall'Android Device Monitor.
+Il Device Monitor può essere avviato all'interno di Android Studio (Tools -> Android -> Android Device Monitor) o dalla shell con il comando `ddms`.
+
+Per iniziare a registrare le informazioni di tracing, scegli il processo target dal tab "Devices" e clicca su "Start Method Profiling".
+Clicca sullo stop button per fermare la registrazione, dopo di che il tool Traceview aprirà e mostrerà la trace registrata.
+Cliccando su uno dei metodi nel profile panel evidenzierà il metodo selezionato nel timeline panel.
+
+Anche DDMS offre un utile heap dump button che farà il dump dell'heap Java di un processo in un file `.hprof`.
+L'Android Studio user guide contiene maggiori informazioni su Traceview.
 
 ##### Tracing System Calls
 
+Scendendo di un livello nella gerarchia del SO, giungi a funzioni privilegiate che richiedono permessi del kernel Linux.
+Queste funzioni sono disponibili ai processi normali tramite l'interfaccia delle system call.
+Un metodo efficace per avere un'idea di cosa un processo utente stia facendo consiste nell'istrumentation e nell'intercettazione delle chiamate al kernel, e spesso sono anche il metodo più efficace per disattivare le difese anti-tampering di basso livello.
+
+Strace è un'utility standard Linux che monitora le interazioni tra i processi e il kernel.
+Quest'utility non è inclusa in Android di default, ma può essere compilata dai sorgenti con l'Android NDK.
+Strace è un modo conveniente per monitorare le system call di un processo.
+Strace si basa sulla system call `ptrace` per agganciarsi al processo target, quindi funziona solo fin quando le misure anti-debugging non vengono applicate.
+
+Se la feature Android "stop application at startup" non è disponibile, puoi usare uno script per lanciare il processo e agganciare immediatamente strace (non una soluzione elegante, ma funziona):
+
+```sh
+$ while true; do 
+	pid=$(pgrep 'target_process' | head -1); 
+	if [[ -n "$pid" ]]; then 
+		strace -s 2000 - e "!read" -ff -p "$pid"; 
+		break; 
+	fi; 
+done
+```
+
 ##### Ftrace
+
+Ftrace è un'utility di tracing compilata direttamente all'interno del kernel Linux.
+Sui device rooted, ftrace può fare il tracing delle system call in un modo più trasparente di strace (strace si basa sulla system call ptrace per agganciarsi al processo target).
+
+Il kernel Android stock sia su Lollipop che Marshmallow include la funzionalità di ftrace.
+Queste funzionalità può essere abilitata col seguente comando:
+
+```sh
+$ echo 1 > /proc/sys/kernel/ftrace_enabled
+```
+
+La directory `/sys/kernel/debug/tracing` contiene tutti i file di controllo e di output generati da ftrace.
+Questi sono i file che trovi in questa directory:
+
+- available_tracers:
+questo file elenca tutti i tracer disponibili compilati nel kernel
+- current_tracer:
+questo file imposta o mostra il tracer corrente
+- tracing_on:
+fai l'echo di "1" in questo file per consentire/avviare l'aggiornamento del ring buffer.
+Con "0" verrà impedita la scrittura nel ring buffer
 
 ##### KProbes
 
+L'interfaccia KProbes fornisce un modo ancora più potente per agire a livello di kernel: permette di inserire probe in quasi qualsiasi indirizzo di codice nella memoria del kernel.
+KProbes inserisce un'istruzione di breakpoint nell'indirizzo specificato.
+Una volta che il breakpoint viene raggiunto, il controllo passa a KProbes, che poi esegue gli handler definiti dall'utente e l'istruzione originale.
+Oltre a essere ottimo per il tracing delle funzioni, KProbes può implementare funzionalità rootkit-like, come file hiding.
+
+Jprobes e Kretprobes sono altri tipi di probe basati su KProbes che fanno l'hooking delle entry e degli exit delle funzioni.
+
+Il kernel Android stock non ha il supporto per i moduli caricabili, che è un problema dato che KProbes è di solito rilasciato come modulo kernel.
+Il livello di protezione della memoria con cui viene compilato Android è un altro problema dato che impedisce il patching di alcune parti della memoria kernel.
+Il metodo di hooking delle sistem call elfmaster genera un kernel panic nei Lollipop e Marshmallow stock perchè la sys_call_table non è writable.
+Puoi, tuttavia, usare KProbes in una sandbox compilando il tuo kernel.
+
 ### Emulation-based Analysis
+
+L'emulatore Android è basato su QEMU, un emulatore open source.
+QEMU emula una guest CPU traducendo le guest instruction on-the-fly in istruzioni che l'host processor può capire.
+Ogni blocco base di guest instruction sono disassemblate e tradotte in una rappresentazione intermedia chiamta Tiny Code Generator (TCG).
+Il blocco TCG viene compilato in un blocco di host instruction, memorizzato in una cache di codice ed eseguito.
+Dopo l'esecuzione del blocco base, QEMU ripete il processo per i blocchi successivi delle guest instruction (o carica il blocco già tradotto presente nella cache).
+L'intero processo viene chiamato dynamic binary translation.
+
+Dato che l'emulatore Android è un fork di QEMU, ha a disposizione tutte le feature di QEMU, incluse quelle per il monitoring, il debugging e il tracing.
+I parametri specifici di QEMU possono essere passati all'emulatore con il flag `-qemu`.
+Puoi usare i servizi di tracing built-in di QEMU per fare il logging delle istruzioni eseguite e dei valori dei registri virtuali.
+Lanciandolo con il flag `-d`, QEMU farà il dump dei blocchi del guest code, delle micro operazioni, o delle host instruction eseguite.
+Con il flag `-d_asm`, QEMU fa il logging di tutti i blocchi base del guest code non appena entra nella funzione di traduzione di QEMU.
+Il seguete comando fa il logging di tutti i blocchi tradotti:
+
+```sh
+$ emulator -show-kernel -avd Nexus_4_API_19 -snapshot default-boot -no-snapshot-save -qemu -d in_asm,cpu 2>/tmp/qemu.log
+```
+
+Sfortunatamente, è impossibile generare una trace completa di guest instruction con QEMU 
+perchè i blocchi di codice sono scritti nel log solo quando sono tradotti; non quando sono presi dalla cache.
+Per esempio, se un blocco è eseguito ripetutamente in un loop, solo la prima iterazione verrà stampata nei log.
+Non c'è modo di disabilitare il TB caching in QEMU (a meno di manomettere il suo codice sorgente).
+Tuttavia, questa funzionalità è sufficiente per i task base, come la ricostruzione dell'assembly di un algoritmo crittografico eseguito nativamente.
+
+I framework di analisi dinamica, come PANDA e DroidScope, sono costruiti sulle funzionalità di tracing di QEMU.
+PANDA/PANDROID è la miglior scelta se vuoi fare un'analisi CPU-trace based 
+perchè permette di registrare e riprodurre facilmente una trace completa ed è facilmente configurabile se segui le istruzioni per Ubuntu.
 
 #### DroidScope
 
+DroidScope (un'estensione del framework di analisi dinamica DECAF) è un engine di malware analysis basato su QEMU.
+Configura l'ambiente emulato su diversi livelli, consentendo di ricostruire completamente la semantica dell'hardware, a livellO di Linux e di Java.
+
+DroidScope esporta delle API di instrumentation che riflettono i diversi contesti (hardware, SO, e Java) di un device Android.
+I tool di analisi possono usare queste API per interrogare o impostare informazioni e registrare callback per diversi eventi.
+Per esempio, un plugin può registrare una callback da eseguire all'inizio e alla fine di un'istruzione nativa, leggere e scrivere in memoria, leggere e scrivere sui registri, system call, e chiamate a metodi Java.
+
+Tutto ciò permette di costruire dei tracer che sono praticamente trasparenti all'app target (dato che possiamo nascondere il fatto che è in esecuzione su un emulatore).
+Una limitazione è che DroidScope è compatibile solo con la Dalvik VM.
+
 #### PANDA
+
+PANDA è un'altra piattaforma di analisi dinamica basata su QEMU.
+Come DroidScope, PANDA può essere estesa registrando delle callback che vengono invocate quando si verificano degli eventi QEMU.
+PANDA aggiunge la possibilità di registrare/replicare le feature.
+Ciò permette un workflow interattivo:
+il reverse engineer registra una trace di un'app target (o una sua parte), poi la riesegue ripetutamente, ridefinendo il plugin di analisi a ogni iterazione.
+
+PANDA incorpora già dei plugin, incluso un tool di ricerca tramite string e un syscall tracer.
+Inoltre, supporta gli Android guest, ed è stato fatto il porting di parte del codice DroidScope.
+La compilazione e l'esecuzione di codice PANDA per Android ("PANDROID") è relativamente semplice.
+Per provarlo, clona il repository di Moiyx e compila PANDA:
+
+```sh
+$ cd qemu
+$ ./configure --target-list=arm-softmmu --enable-android 
+$ make
+```
+
+Le versioni Android fino a 4.4.1 non hanno problemi con PANDROID, ma qualsiasi versione più nuova non esegue il boot.
+Inoltre, l'introspection code a livello Java funziona solo per il Dalvik runtime di Android 2.3 (API level 9).
+Le versioni più vecchie di Android sembra che vengano eseguite più velocemente sull'emulatore, quindi si consiglia l'uso di Gingerbread se si vuole usare PANDA.
 
 #### VxStripper
 
+Un altro tool molto utile basato su QEMU è VxStripper.
+VxStripper è stato progettato per il deoffuscamento di binari.
+Tramite l'instrumentation dei meccanismi di traduzione dinamica di binari di QEMU, estrae dinamicamente una rappresentazione intermedia di un binario.
+Poi applica delle semplificazioni sulla rappresentazione intermedia estratta e recompila i binari semplificati con LLVM.
+Questo è un modo molto potente per la normalizzazione di programmi offuscati.
+
 ### Binary Analysis
+
+I framework di analisi binaria ti danno la possibilità di automatizzare task che potrebbero essere impossibili da eseguire manualmente.
+I framework di analisi binaria di solito usano una tecnica chiamata symbolic execution, che permette di determinare le condizioni necessarie a raggiungere uno specifico obiettivo.
+Traduce la semantica del programma in una formula logica in cui alcune variabili sonos rappresentate da simboli con specifici vincoli.
+Risolvendo i vincoli, puoi trovare le condizioni necessarie all'esecuzione di alcuni branch del programma.
 
 #### Symbolic Execution
 
+281
+
 ### Tampering and Runtime Instrumentation
+
+END AT 304
