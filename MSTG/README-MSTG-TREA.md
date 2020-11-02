@@ -679,7 +679,7 @@ Il tool `adb` è stato introdotto nel capitolo "Android Basic Security Testing".
 Per lanciare l'app in debug mode usa:
 
 ```sh
-adb shell am start -D "owasp.mstg.uncrackable1/sg.vantagepoint.uncrackable1.MainActivity"
+$ adb shell am start -D "owasp.mstg.uncrackable1/sg.vantagepoint.uncrackable1.MainActivity"
 ```
 
 A questo punto l'app è in attesa della connessione del debugger.
@@ -689,7 +689,8 @@ Col comando `adb forward`, puoi aprire un socket in ascolto sulla tua macchina e
 
 ```sh
 $ adb jdwp
-12167	
+12167
+
 $ adb forward tcp:7777 jdwp:12167
 ```
 
@@ -715,22 +716,22 @@ I comandi utili sono:
 
 - classes: 
 lista di tutte le classi caricate
-- class/method/fields class id: 
+- class/method/fields class-id: 
 stampa i dettagli di una classe e lista i suoi metodi e campi
 - locals: 
 stampa le variabili locali nello stack frame corrente
 - print/dump expr: 
 stampa informazioni su un /oggetto
-- stop in method: 
+- stop in method-name: 
 imposta un breakpoint per un metodo
-- clear method: 
+- clear method-name: 
 rimuove un breakpoint per un metodo
 - set lvalue = expr: 
 assegna un nuovo valore a un elemento field/variable/array
 
-Rivediamo il codice decompilato dall'UnCrackable App Level 1 e pensa alle possibili soluzioni.
+Rivediamo il codice decompilato dall'UnCrackable App Level 1 e pensiamo alle possibili soluzioni.
 Un buon approccio potrebbe essere sospendere l'app in uno stato in cui il secret è tenuto in clear text in una variabile in modo che possa essere recuperato.
-Sfortuantamente, non ci riuscirai se prima non risolvi il vincolo della root/tampering detection.
+Sfortuantamente, non ci riusciremo se prima non risolviamo il vincolo della root/tampering detection.
 
 Riguarda il codice e vedrai che il metodo `sg.vantagepoint.uncrackable1.MainActivity.a` motra il message box "This is unacceptable ...".
 Questo metodo crea un `AlertDialog` e imposta una listener class per l'evento `onClick`.
@@ -754,8 +755,10 @@ Con l'app in sospeso, imposta un breakpoint su `android.app.Dialog.setCancelable
 ```sh
 > stop in android.app.Dialog.setCancelable
 Set breakpoint android.app.Dialog.setCancelable
+
 > resume
 All threads resumed.
+
 >
 Breakpoint hit: "thread=main", android.app.Dialog.setCancelable(), line=1,110 bci=0
 main[1]
@@ -797,7 +800,9 @@ Tocca lo screen in qualsiasi parte al di fuori del box e questo sparirà senza c
 Ora che l'anti-tampering è fuori dai piedi, sei pronto ad estrarre il secret.
 Nella sezione "static analysis", hai visto che la string è decifrata con AES, poi confrontata con la string di input del message box.
 Il metodo `equals` della classe `java.lang.String` confronta la string di input con il secret.
-Imposta un breakpoint sul metodo `java.lang.String.equals`, inserisci un testo a caso nell'edit field, e tocca il button "verify".
+Inserisci un testo a caso nell'edit field,
+imposta un breakpoint sul metodo `java.lang.String.equals` e 
+tocca il button "verify".
 Non appena il breakpoint viene raggiunto, puoi leggere l'argomento del metodo con il comando `locals`.
 
 ```sh
@@ -859,7 +864,7 @@ Dopo aver ottenuto i nomi delle directory separate da punto e virgola, il cursor
 Ciò succede perchè stai lavorando sul codice decompilato e non sul codice sorgente.
 
 Se non vuoi fare il debugging delle classi Java core e Android, puoi uscire dalle funzioni cliccando su "Step Out" nella Debugger View.
-L'uso di "Force Step Into" potrebbe essere una buona idea una volta che hai raggiunto i sorgenti decompilati e fare "Step Out" per le classi Java core e Android.
+L'uso di "Force Step Into" potrebbe essere utile quando hai raggiunto i sorgenti decompilati e fare "Step Out" per le classi Java core e Android.
 In questo modo si velocizza il debugging mentre si tengono d'occhio i valori di ritorno delle funzioni delle classi core.
 
 Dopo che il metodo `a` recupera i nomi delle directory, cercherà il binario `su` in queste directory.
@@ -876,12 +881,12 @@ Imposta un breakpoint sul metodo `a` e clicca su "Force Step Into" quando raggiu
 Poi, vai di single-step fino a raggiungere la chiamta a `String.equals`.
 Qui è dove l'input utente viene confrontato con il secret.
 
-Puoi vedere il secret nella view "Variables" quando giungi alla chiamta del metodo `String.equals`.
+Puoi vedere il secret nella view "Variables" quando giungi alla chiamata del metodo `String.equals`.
 
 #### Debugging Native Code
 
 In Android il codice nativo è impacchettato in librerie condivise ELF e viene eseguito come un qualsiasi altro programma Linux nativo.
-Per questo, puoi farne il debug con tool standard (incluso GDB e i debug built-in dell'IDE come IDA Pro e JEB) dato che supportano le architetture dei processori dei device (la maggior parte dei device è basata su chipset ARM, quindi di solito non ci sono problemi a riguardo).
+Per questo, puoi farne il debug con tool standard (incluso GDB e i debug built-in dell'IDE come IDA Pro e JEB) dato che supportano le architetture dei processori dei device (la maggior parte dei device è basata su chipset ARM, quindi di solito non ci sono problemi).
 
 Imposta ora la tua app JNI demo, HelloWorld-JNI.apk, per il debugging.
 É la stessa apk che avevi scaricato in "Statically Analyzing Native Code".
@@ -899,7 +904,7 @@ Copia il binario di dgbserver sul tuo device:
 $ adb push $NDK/prebuilt/android-arm/gdbserver/gdbserver /data/local/tmp
 ```
 
-Il comando `gdbserver --attach` aggancia dgbserver al processo in esecuzione e fa il binding dell'indirizzo IP e della porta specificat in `comm`, che in questo caso è il descriptor HOST:PORT.
+Il comando `gdbserver --attach` aggancia dgbserver al processo in esecuzione e fa il binding dell'indirizzo IP e della porta specificata in `comm`, che in questo caso è il descriptor HOST:PORT.
 Avvia HelloWorldJNI sul device, poi connettiti al device e individua il PID del processo HelloWorldJNI (sg.vantagepoint.helloworldjni).
 Poi entra nella shell di root e aggancia `gdbserver`:
 
@@ -997,8 +1002,6 @@ Copyright (C) 2014 Free Software Foundation, Inc.
 Remote debugging using :1234
 0xb6de83b8 in ?? ()
 ```
-
-FAI SCHEMA DI COMANDI LANCIATI E CONSEGUENZE
 
 ### Tracing
 
