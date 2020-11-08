@@ -1198,14 +1198,719 @@ Questo è un modo molto potente per la normalizzazione di programmi offuscati.
 ### Binary Analysis
 
 I framework di analisi binaria ti danno la possibilità di automatizzare task che potrebbero essere impossibili da eseguire manualmente.
-I framework di analisi binaria di solito usano una tecnica chiamata symbolic execution, che permette di determinare le condizioni necessarie a raggiungere uno specifico obiettivo.
-Traduce la semantica del programma in una formula logica in cui alcune variabili sonos rappresentate da simboli con specifici vincoli.
+Di solito usano una tecnica chiamata symbolic execution, che permette di determinare le condizioni necessarie a raggiungere uno specifico punto.
+Traducono la semantica del programma in una formula logica in cui alcune variabili sono rappresentate da simboli con specifici vincoli.
 Risolvendo i vincoli, puoi trovare le condizioni necessarie all'esecuzione di alcuni branch del programma.
 
 #### Symbolic Execution
 
-281
+La symbolic execution è utile quando devi trovare il giusto input per raggiungere un certo blocco di codice.
+Nel seguente esempio, useremo Angr per risolvere un semplice crackme Android in modo automatico.
+Fai riferimento al capitolo "Android Basic Security Testing" per la sua installazione.
+
+Il crackme target è un semplice eseguibile Android per la validazione di una license key.
+Anche se non troverai validator di license key come questo, l'esempio dovrebbe dimostrare le basi dell'analisi statica/simbolica di codice nativo.
+Puoi usare le stesse tecniche su app Android che contentono librerie native offuscate (infatti, il codice offuscato viene spesso messo in librerie native per rendere il deoffuscamento più difficile).
+
+Il crackme è un binario ELF nativo che puoi trovare [qui](https://github.com/angr/angr-doc/tree/master/examples/android_arm_license_validation).
+
+L'esecuzione del binario su un qualsiasi device Android, dovrebbe dare questo output:
+
+```sh
+$ adb push validate /data/local/tmp
+[100%] /data/local/tmp/validate
+
+$ adb shell chmod 755 /data/local/tmp/validate
+
+$ adb shell /data/local/tmp/validate
+Usage: ./validate <serial>
+
+$ adb shell /data/local/tmp/validate 12345
+Incorrect serial (wrong format).
+```
+
+Fin qui tutto bene, ma non sai come è fatta una license key valida.
+Da dove si parte?
+Avvia Cutter per avere un'idea di ciò che succede.
+Il `main` è all'indirizzo 0x00001874 nel disassembly (nota che questo è un binario PIE-enabled (Position Independent Executable), e Cutter sceglie 0x0 come indirizzo di partenza).
+
+![TREA_001](./images/TREA_001.png)
+
+I nomi delle funzioni sono stati rimossi, ma puoi trovare alcuni riferimenti alle string di debugging.
+L'input string sembra essere Base32-decoded (chiamata a fcn.00001340).
+All'inizio del `main`, è presente un controllo sulla lunghezza all'indirizzo 0x000018a8.
+Viene verificato che la lunghezza della string sia esattamente 16 caratteri.
+Quindi stai cercando una string di 16 caratteri Base32-encoded.
+L'input decodificato viene passato alla funzione fcn.00001760, che valida la license key.
+
+L'input string di 16 caratteri decodificata occupa 10 byte, quindi sai che la funzione di validazione si aspetta una string binaria di 10 byte.
+Ora analizziamo la funzione di validazione all'indirizzo 0x00001760:
+
+```sh
+(fcn) fcn.00001760 268
+│ fcn.00001760 (int32_t arg1);
+│ ; var int32_t var_20h @ fp-0x20
+│ ; var int32_t var_14h @ fp-0x14
+│ ; var int32_t var_10h @ fp-0x10
+│ ; arg int32_t arg1 @ r0
+│ ; CALL XREF from fcn.00001760 (+0x1c4)
+│ 0x00001760 push {r4, fp, lr}
+│ 0x00001764 add fp, sp, 8
+│ 0x00001768 sub sp, sp, 0x1c
+│ 0x0000176c str r0, [var_20h] ; 0x20 ; "$!" ; arg1
+│ 0x00001770 ldr r3, [var_20h] ; 0x20 ; "$!" ; entry.preinit0
+│ 0x00001774 str r3, [var_10h] ; str.
+│ ; 0x10
+│ 0x00001778 mov r3, 0
+│ 0x0000177c str r3, [var_14h] ; 0x14
+│ ╭─< 0x00001780 b 0x17d0
+│ │ ; CODE XREF from fcn.00001760 (0x17d8)
+│ ╭──> 0x00001784 ldr r3, [var_10h] ; str.
+│ │ ; 0x10 ; entry.preinit0
+│ ╎│ 0x00001788 ldrb r2, [r3]
+│ ╎│ 0x0000178c ldr r3, [var_10h] ; str.
+│ ╎│ ; 0x10 ; entry.preinit0
+│ ╎│ 0x00001790 add r3, r3, 1
+│ ╎│ 0x00001794 ldrb r3, [r3]
+│ ╎│ 0x00001798 eor r3, r2, r3
+│ ╎│ 0x0000179c and r2, r3, 0xff
+│ ╎│ 0x000017a0 mvn r3, 0xf
+│ ╎│ 0x000017a4 ldr r1, [var_14h] ; 0x14 ; entry.preinit0
+│ ╎│ 0x000017a8 sub r0, fp, 0xc
+│ ╎│ 0x000017ac add r1, r0, r1
+│ ╎│ 0x000017b0 add r3, r1, r3
+│ ╎│ 0x000017b4 strb r2, [r3]
+│ ╎│ 0x000017b8 ldr r3, [var_10h] ; str.
+│ ╎│ ; 0x10 ; entry.preinit0
+│ ╎│ 0x000017bc add r3, r3, 2 ; "ELF\x01\x01\x01" ; aav.0x00000001
+│ ╎│ 0x000017c0 str r3, [var_10h] ; str.
+│ ╎│ ; 0x10
+│ ╎│ 0x000017c4 ldr r3, [var_14h] ; 0x14 ; entry.preinit0
+│ ╎│ 0x000017c8 add r3, r3, 1
+│ ╎│ 0x000017cc str r3, [var_14h] ; 0x14
+│ ╎│ ; CODE XREF from fcn.00001760 (0x1780)
+│ ╎╰─> 0x000017d0 ldr r3, [var_14h] ; 0x14 ; entry.preinit0
+│ ╎ 0x000017d4 cmp r3, 4 ; aav.0x00000004 ; aav.0x00000001 ; aav.
+0x00000001
+│ ╰──< 0x000017d8 ble 0x1784 ; likely
+│ 0x000017dc ldrb r4, [fp, -0x1c] ; "4"
+│ 0x000017e0 bl fcn.000016f0
+│ 0x000017e4 mov r3, r0
+│ 0x000017e8 cmp r4, r3
+│ ╭─< 0x000017ec bne 0x1854 ; likely
+│ │ 0x000017f0 ldrb r4, [fp, -0x1b]
+│ │ 0x000017f4 bl fcn.0000170c
+│ │ 0x000017f8 mov r3, r0
+│ │ 0x000017fc cmp r4, r3
+│ ╭──< 0x00001800 bne 0x1854 ; likely
+│ ││ 0x00001804 ldrb r4, [fp, -0x1a]
+│ ││ 0x00001808 bl fcn.000016f0
+│ ││ 0x0000180c mov r3, r0
+│ ││ 0x00001810 cmp r4, r3
+│ ╭───< 0x00001814 bne 0x1854 ; likely
+│ │││ 0x00001818 ldrb r4, [fp, -0x19]
+│ │││ 0x0000181c bl fcn.00001728
+│ │││ 0x00001820 mov r3, r0
+│ │││ 0x00001824 cmp r4, r3
+│ ╭────< 0x00001828 bne 0x1854 ; likely
+│ ││││ 0x0000182c ldrb r4, [fp, -0x18]
+│ ││││ 0x00001830 bl fcn.00001744
+│ ││││ 0x00001834 mov r3, r0
+│ ││││ 0x00001838 cmp r4, r3
+│ ╭─────< 0x0000183c bne 0x1854 ; likely
+│ │││││ 0x00001840 ldr r3, [0x0000186c] ; [0x186c:4]=0x270 section..hash ; secti
+on..hash
+│ │││││ 0x00001844 add r3, pc, r3 ; 0x1abc ; "Product activation passed. C
+ongratulations!"
+│ │││││ 0x00001848 mov r0, r3 ; 0x1abc ; "Product activation passed. C
+ongratulations!" ;
+│ │││││ 0x0000184c bl sym.imp.puts ; int puts(const char *s)
+│ │││││ ; int puts("Product activation passed. C
+ongratulations!")
+│ ╭──────< 0x00001850 b 0x1864
+│ ││││││ ; CODE XREFS from fcn.00001760 (0x17ec, 0x1800, 0x1814, 0x1828, 0x183c)
+│ │╰╰╰╰╰─> 0x00001854 ldr r3, aav.0x00000288 ; [0x1870:4]=0x288 aav.0x00000288
+│ │ 0x00001858 add r3, pc, r3 ; 0x1ae8 ; "Incorrect serial." ;
+│ │ 0x0000185c mov r0, r3 ; 0x1ae8 ; "Incorrect serial." ;
+│ │ 0x00001860 bl sym.imp.puts ; int puts(const char *s)
+│ │ ; int puts("Incorrect serial.")
+│ │ ; CODE XREF from fcn.00001760 (0x1850)
+│ ╰──────> 0x00001864 sub sp, fp, 8
+╰ 0x00001868 pop {r4, fp, pc} ; entry.preinit0 ; entry.preinit0 ;
+```
+
+Se dai un'occhiata alla view del grafico puoi vedere un loop con uno XOR che viene applicato all'indirizzo 0x00001784, che presumibilmente decodifica la string di input.
+
+A partire dall'indirizzo 0x000017dc, puoi vedere una serie di valori decifrati confrontati con i valori di altre chiamate di funzioni.
+
+Anche se non sembra particolarmente sofisticato, dovrai analizzare più approfonditamente il binario per fare il reversing e generare una license key che verifica il controllo.
+Ora arriva il colpo di scena: la symbolic execution dinamica ti permette di creare automaticamente una licence key valida.
+L'engine di symbolic execution mappa un path tra 
+la prima istruzione del controllo della license (0x00001760) e 
+il codice che stampa il messaggio "Product activation passed" (0x00001840) per determinare i vincoli su ogni byte dell'input string.
+
+Il solver engine poi trova un input che soddisfa questi vincoli, cioè la license key valida.
+
+Devi fornire i seguenti input all'engine di symbolic execution:
+
+- un indirizzo da cui l'esecuzione partirà.
+Inizializzare lo stato con la prima istruzione della funzine di validazione.
+Ciò rende il problema molto più facile da risolvere perchè ti evita di eseguire simbolicamente l'implementazione Base32
+- l'indirizzo del blocco di codice che vuoi raggiungere con l'esecuzione.
+Devi trovare il path nel codice responsabile della stampa del messaggio "Product activation passed".
+Questo blocco di codice inizia all'inidirizzo 0x00001840.
+- l'indirizzo che non vuoi raggiungere.
+Non sei interessato in qualsiasi path che termina nel blocco di codice che stampa il messaggio "Incorrect serial" (0x00001854)
+
+Nota che Angr caricherà l'eseguibile PIE con un indirizzo di partenza di 0x40000000, quindi devi aggiungerlo agli indirizzi che seguono.
+Per trovare la licence key puoi usare il seguente script python:
+
+```python
+#!/usr/bin/python
+
+# This is how we defeat the Android license check using Angr!
+# The binary is available for download on GitHub:
+# https://github.com/b-mueller/obfuscation-metrics/tree/master/crackmes/android/01_license_check_1
+# Written by Bernhard -- bernhard [dot] mueller [at] owasp [dot] org
+
+import angr
+import claripy
+import base64
+
+load_options = {}
+
+# Android NDK library path:
+load_options['custom_ld_path'] = ['/Users/berndt/Tools/android-ndk-r10e/platforms/android-21/arch-arm/usr/lib']
+
+b = angr.Project("./validate", load_options = load_options)
+
+# The key validation function starts at 0x401760, so that's where we create the initial state.
+# This speeds things up a lot because we're bypassing the Base32-encoder.
+state = b.factory.blank_state(addr = 0x401760)
+initial_path = b.factory.path(state)
+path_group = b.factory.path_group(state)
+
+# 0x401840 = Product activation passed
+# 0x401854 = Incorrect serial
+path_group.explore(find = 0x401840, avoid = 0x401854)
+found = path_group.found[0]
+
+# Get the solution string from *(R11 - 0x24).
+addr = found.state.memory.load(found.state.regs.r11 - 0x24, endness='Iend_LE')
+concrete_addr = found.state.se.any_int(addr)
+solution = found.state.se.any_str(found.state.memory.load(concrete_addr, 10))
+
+print base64.b32encode(solution)
+```
+
+Nota la parte finale dello script, in cui l'input string viene recuperata; 
+sembra come se stessi leggendo il suo valore dalla memoria.
+Tuttavia, la stai leggendo da una memoria simbolica; nè la string nè il suo puntatore esistono.
+In realtà, il solver sta calcolando valori reali che troveresti in quello stato del programma se l'avessi osservato durante l'esecuzione in quel punto.
+
+L'esecuzione dello script dovrebbe restituire questo output:
+
+```sh
+(angr) $ python solve.py
+WARNING | 2017-01-09 17:17:03,664 | cle.loader | The main binary is a position-independent executable. It is being loaded with a base address of 0x400000.
+JQAE6ACMABNAAIIA
+```
 
 ### Tampering and Runtime Instrumentation
 
-END AT 304
+vedremo alcuni modi semplici di modificare e di fare l'instrumentation delle app.
+Con tampering si intende il pathching o il cambiamento a run time dell'app per cambiarne il comportamento.
+Per esempio, potresti voler disattivare il certificate pinning o la binary protection che ostacola il testing dell'app.
+La runtime instrumentation include l'aggiunta di hook e patch a runtime per osservare il comportamento dell'app.
+Nella sicurezza delle app mobile, con questo termine si fa riferimento in senso più ampio a tutti i tipi di run time manipulation, inscluso l'overriding dei metodi per cambiarne il comportamento.
+
+### Patching, Repackaging, and Re-Signing
+
+L'applicazione di piccoli cambiamenti all'Android Manifest o al bytecode è spesso un modo veloce per rimuovere piccoli ostacoli che impediscono lo svolgimento dei test o il reversing dell'app.
+In Android, di solito si presentano questi due impedimenti:
+
+- non puoi intercettare il traffico HTTPS con un proxy perchè l'app adotta il certificate pinning
+- non puoi agganciare un debugger all'app perchè il flag `android:debuggable` non è impostato a `true` nell'AndroidManifest.xml
+
+Nella maggior parte dei casi, entrambi possono essere raggirati applicando due piccole modifiche all'app (patching) e ri-firmandola e re-impacchettandola.
+Le app che adottano controlli di integrità addizionale oltre il code-signing di Android sono un'eccezione, in questi casi, devi raggirare anche questi controlli.
+
+Il primo passo è l'unpacking e il disassembling dell'apk con `apktool`:
+
+```sh
+$ apktool d target_apk.apk
+```
+
+> Nota: Per risparmiare tempo, potresti usare il flag `--no-src` se vuoi solo fare l'unpacking dell'apk e non disassemblare il codice. 
+> Per esempio, quando vuoi solo modificare l'AndroidManifest.xml e fare il re-pack immediatamente.
+
+#### Patching Example: Disabling Certificate Pinning
+
+Il certificate pinning è un problema per i security tester che vogliono intercettare la comunicazione HTTPS per ragioni legittime.
+Può essere d'aiuto il patching del bytecode al fine di disattivare il certificate pinning.
+Per dimostrare il bypass del certificate pinning, vedremo un'implementazione in un'app di esempio.
+
+Una volta che hai fatto l'unpacking e il disassembling dell'apk, è il momento di individuare i controlli di certificate pinning nel codice sorgente Smali.
+Cerca nel codice parole chiave come "X509TrustManager" per individuare i punti critici.
+
+Nel nostro esempio, una ricerca per "X509TrustManager" restituisce una classe che implementa un TrustManager custom.
+Una classe derivata implementa i metodi `checkClientTrusted`, `checkServerTrusted` e `getAcceptedIssuers`.
+
+Per raggirare i controlli di pinning, aggiungi l'opcode `return-void` all'inizio di ogni metodo.
+Questo opcode fa terminare il controllo immediatamente.
+Con questa modifica, non vengono eseguiti controlli sul certificato, e l'app accetta tutti i certificati.
+
+```java
+.method public checkServerTrusted([LJava/security/cert/X509Certificate;Ljava/lang/String;)V
+	.locals 3
+	.param p1, "chain" # [Ljava/security/cert/X509Certificate;
+	.param p2, "authType" # Ljava/lang/String;
+
+	.prologue
+	return-void # <-- OUR INSERTED OPCODE!
+	.line 102
+	iget-object v1, p0, Lasdf/t$a;->a:Ljava/util/ArrayList;
+
+	invoke-virtual {v1}, Ljava/util/ArrayList;->iterator()Ljava/util/Iterator;
+
+	move-result-object v1
+
+	:goto_0
+	invoke-interface {v1}, Ljava/util/Iterator;->hasNext()Z
+```
+
+Questa modifica invaliderà la firma dell'apk, quindi ci sarà bisogno di rifirmare l'apk modificata dopo aver fatto il re-packaging.
+
+#### Patching Example: Making an App Debuggable
+
+Ogni processo debuggable esegue un thread extra per la gestione dei pacchetti JDWP.
+Questo thread viene lanciato solo per le app che hanno il flag `android:debuggable="true"` impostato nell'AndroidManifest.xml.
+Questa è la configurazione tipica con cui le app vengono rilasciate.
+
+Quando farai il reversing di un'app, di solito avrai accesso alla sola build di release dell'app.
+Le build di release non sono pensate per essere debuggable; dopo tutto, è invece lo scopo delle build di debug.
+Se la proprietà di sistema `ro.debuggable` è impostata a "0", Android blocca sia JDWP che il debugging nativo delle build di release.
+Anche se questo controllo è facilmente raggirabile, potresti ancora trovare delle limitazioni, come l'assenza di breakpoint sulle linee di codice.
+Tuttavia, un debugger imperfetto resta sempre un tool inestimabile, la capacità di ispezionare lo stato di un programma a runtime rende molto più facile la comprensione del programma stesso.
+
+Per convertire una build di release in una build di debug, devi modificare il relativo flag nell'AndroidManifest.xml.
+Dopo aver fatto l'unpacking dell'app (es. `apktool d --no-srce UnCrackable-Level1.apk`) e aver decodificato l'AndroidManifest.xml, aggiungi `android:debuggable="true"`:
+
+```xml
+<application android:allowBackup="true" android:debuggable="true" 
+	android:icon="@drawable/ic_launcher" android:label="@string/app_name" 
+	android:name="com.xxx.xxx.xxx" android:theme="@style/AppTheme">
+```
+
+Nota: per ìautomatizzare questo processo con `apktool`, usa il flag `-d` o `-debug` durante il building dell'apk.
+In questo modo viene aggiunto `android:debuggable="true"` all'AndroidManifest.xml
+
+Anche se non abbiamo modificao il codice sorgente, questa modifica invaliderà la firma dell'apk, quindi dovrai rifirmare l'archivio apk modificato.
+
+#### Repackaging
+
+Puoi fare facilmente il repackage dell'app con i seguenti comandi:
+
+```sh
+$ cd UnCrackable-Level1
+$ apktool b
+$ zipalign -v 4 dist/UnCrackable-Level1.apk ../UnCrackable-Repackaged.apk
+```
+
+Nota che la directory dei build tool di Android Studio deve essere nel path.
+Si trova in `[SDK-Path]/build-tools/[version]`.
+I tool `zipalign` e `apksigner` sono in questa directory.
+
+#### Re-Signing
+
+Prima di rifirmare, hai bisogno di un certificato per firmare il codice.
+Se hai già compilato un progetto in Android Studio, l'IDE ha già creato un keystore e un certificato di debug in `$HOME/.android/debug.keystore`.
+La password di default per questo KeyStore è "android" e la chiave viene chiamata "androiddebugkey".
+
+La distribuzione Java standard include il `keytool` per la gestione del KeyStore e dei certificati.
+Puoi creare il tuo certificato e la tua chiave per la firma, e poi aggiungerlo al KeyStore di debug:
+
+```sh
+$ keytool -genkey -v -keystore ~/.android/debug.keystore -alias signkey -keyalg RSA -keysize 2048 -validity 20000
+```
+
+Quando il certificato è disponibile, puoi rifirmare l'apk con esso.
+Assicurati che `apksigner` sia nel path e che tu lo stia eseguendo dal folder in cui hai fatto il repackaging dell'apk.
+
+```sh
+$ apksigner sign --ks ~/.android/debug.keystore --ks-key-alias signkey UnCrackable-Repackaged.apk
+```
+
+Nota: se vengono rilevati dei problemi di compatibilità con JRE con `apksigner`, puoi usare `jarsigner`.
+In questo secondo caso, devi invocare `zipalign` dopo aver firmato l'apk.
+
+```sh
+$ jarsigner -verbose -keystore ~/.android/debug.keystore ../UnCrackable-Repackaged.apk signkey
+$ zipalign -v 4 dist/UnCrackable-Level1.apk ../UnCrackable-Repackaged.apk
+```
+
+Ora reinstalla l'app:
+
+```sh
+$ adb install UnCrackable-Repackaged.apk
+```
+
+#### The “Wait For Debugger” Feature
+
+L'app UnCrackable non è stupida: si accorge se è in esecuzione in debuggable mode e reagisce chiudendosi.
+Viene immediatamente mostrato un modal dialog, e il crackme viene chiuso quando fai il tap su "OK".
+
+Fortunatamente, le "Developer options" di Android contengono l'utile feature "Wait for Debugger", che ti permette di sospendere automaticamente l'app all'avvio finchè un debugger JDWP si connette.
+Con questa feature, puoi connettere il debugger prima che il meccanismo di controllo venga eseguito, fare il trace, il debug e la disattivazione di questo meccanismo.
+É un vantaggio veramente sleale, ma, d'altra parte, i reverse engineer non giocano mai lealmente.
+
+Nelle Developer options, scegli `Uncrackable1` come applicazione su cui fare il debug e attiva lo switch "Wait for Debugger".
+
+Nota: Anche se `ro.debuggable` è impostato a "1" in `default.prop`, un'app non comparirà nella lista di "debug app" a meno che il flag `android:debuggable` non è impostato a `true`.
+
+#### Patching React Native applications
+
+Se è stato usato il framework React Native per lo sviluppo, il codice principale dell'app si trova nel file `assets/index.android.bundle`.
+Questo file contiene codice JavaScript.
+La maggior parte delle volte, il codice JavaScript in questo file è minified.
+Usando il tool JStillery è possibile ottenere una versione human readable del file, che facilita la sua analisi.
+La versione CLI di JStillery o il server locale dovrebbero essere preferiti alla versione online al fine di evitare la disclosure di codice sorgente a terze parti.
+
+Si può usare il seguente approccio per fare il patching del file JavaScript:
+
+- fai l'unpacking dell'apk con il tool `apktool`
+- copia il contenuto del file `assets/index.android.bundle` in un file temporaneo
+- usa `JStillery` per deoffuscare il contenuto del file temporaneo
+- individua dove dovresti applicare i cambiamenti nel file e applicali
+- sostituisci il file originale `assets/index.android.bundle` col file modificato
+- fai il repackaging dell'apk usando il tool `apktool` e rifirmala prima di installarla sul device
+
+## Dynamic Instrumentation
+
+### Method Hooking
+
+#### Xposed
+
+Assumiamo che tu stia testando un'app che termina immediatamente sul tuo device rooted.
+Decompili l'app e trovi il seguente metodo:
+
+```java
+package com.example.a.b
+public static boolean c() {
+	int v3 = 0;
+	boolean v0 = false;
+
+	String[] v1 = new String[]{
+		"/sbin/", "/system/bin/", 
+		"/system/xbin/", "/data/local/xbin/", 
+		"/data/local/bin/", "/system/sd/xbin/", 
+		"/system/bin/failsafe/", "/data/local/"};
+
+	int v2 = v1.length;
+
+	for(int v3 = 0; v3 < v2; v3++) {
+		if(new File(String.valueOf(v1[v3]) + "su").exists()) {
+			v0 = true;
+			return v0;
+		}
+	}
+	return v0;
+}
+```
+
+Questo metodo itera all'interno di una lista directory e restituisce `true` se trova il binario `su` in una di esse.
+I controlli di questo tipo sono facilmente raggirabili, tutto quello che devi fare è sostituire il codice con qualcosa che restituisce "false".
+L'hooking del metodo con il modulo Xposed è un modo per farlo (vedi "Android Basic Security Testing" per maggiori dettagli sull'installazione di Xposed).
+
+Il metodo `XposedHelpers.findAndHookMethod` ti permette di fare l'override dei metodi della classe.
+Ispezionando il codice sorgente decompilato, puoi scoprire che il metodo che esegue il controllo è `c`.
+Questo metodo si trova nella classe `com.example.a.b`.
+Segue un modulo Xposed che fa l'override della funzione in modo che restituisca sempre false:
+
+```java
+package com.awesome.pentestcompany;
+
+import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
+import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.XposedBridge;
+import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
+
+public class DisableRootCheck implements IXposedHookLoadPackage {
+
+	public void handleLoadPackage(final LoadPackageParam lpparam) throws Throwable {
+		if (!lpparam.packageName.equals("com.example.targetapp"))
+			return;
+
+		findAndHookMethod("com.example.a.b", lpparam.classLoader, "c", new XC_MethodHook() {
+			@Override
+			protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+				XposedBridge.log("Caught root check!");
+
+				param.setResult(false);
+			}
+		});
+	}
+}
+```
+
+Come qualsiasi app Android, i moduli Xposed sono sviluppati e installati con Android Studio.
+Per maggiori dettagli sullo sviluppo, sulla compilazione e sull'installazione dei moduli Xposed, fai riferimento al tutorial fornito dal suo autore, [rovo89](https://www.xda-developers.com/rovo89-updates-on-the-situation-regarding-xposed-for-nougat/).
+
+#### Frida
+
+Useremo Frida per risolvere l'app UnCrackable Level 1 e dimostrare come è possibile raggirare i controlli di root detection ed estrarre il secret dall'app.
+
+Quando avvii l'app crackme su un emulatore o su un device rooted, noterai che l'app presenta un dialog box e termina non appena tu fai tap su "OK".
+
+Vediamo come possiamo impedirlo.
+
+Il metodo responsabile di questo comportamento (decompilato con CFR) è simile al seguente:
+
+```java
+package sg.vantagepoint.uncrackable1;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.os.Bundle;
+import android.text.Editable;
+import android.view.View;
+import android.widget.EditText;
+import sg.vantagepoint.uncrackable1.a;
+import sg.vantagepoint.uncrackable1.b;
+import sg.vantagepoint.uncrackable1.c;
+
+public class MainActivity extends Activity {
+	private void a(String string) {
+		AlertDialog alertDialog = new AlertDialog.Builder((Context)this).create();
+
+		alertDialog.setTitle((CharSequence)string);
+		alertDialog.setMessage((CharSequence)"This in unacceptable. The app is now going to exit.");
+		alertDialog.setButton(-3, (CharSequence)"OK", (DialogInterface.OnClickListener)new b(this));
+
+		alertDialog.show();
+	}
+
+	protected void onCreate(Bundle bundle) {
+		if (sg.vantagepoint.a.c.a() || sg.vantagepoint.a.c.b() || sg.vantagepoint.a.c.c()) {
+			this.a("Root detected!"); //This is the message we are looking for
+		}
+
+		if (sg.vantagepoint.a.b.a((Context)this.getApplicationContext())) {
+			this.a("App is debuggable!");
+		}
+
+		super.onCreate(bundle);
+		this.setContentView(2130903040);
+	}
+
+	public void verify(View object) {
+		object = ((EditText)this.findViewById(2131230720)).getText().toString();
+		AlertDialog alertDialog = new AlertDialog.Builder((Context)this).create();
+
+		if (a.a((String)object)) {
+			alertDialog.setTitle((CharSequence)"Success!");
+			alertDialog.setMessage((CharSequence)"This is the correct secret.");
+		} else {
+			alertDialog.setTitle((CharSequence)"Nope...");
+			alertDialog.setMessage((CharSequence)"That's not it. Try again.");
+		}
+
+		alertDialog.setButton(-3, (CharSequence)"OK", (DialogInterface.OnClickListener)new c(this));
+		alertDialog.show();
+	}
+}
+```
+
+Nota che il messaggio "Root detected" nel metodo `onCreate` e i vari metodi invocati nei precedenti `if` (che eseguono l'effettiva root detection).
+Nota anche il messaggio "This is unacceptable..." nel primo metodo della classe, `private void a`.
+Ovviamente, questo mostra il dialog box.
+C'è una callback `alertDialog.onClickListener` inpostata nella chiamata al metodo `setButton`, che chiude l'app tramite `System.exit(0)` dopo aver rilevato un device rooted.
+Con Frida, puoi impedire all'app di uscire facendo l'hooking della callback.
+
+L'implementazione `onClickListener` per il dialog button non fa un gran chè:
+
+```java
+package sg.vantagepoint.uncrackable1;
+
+class b implements android.content.DialogInterface$OnClickListener {
+	final sg.vantagepoint.uncrackable1.MainActivity a;
+
+	b(sg.vantagepoint.uncrackable1.MainActivity a0) {
+		this.a = a0;
+		super();
+	}
+
+	public void onClick(android.content.DialogInterface a0, int i) {
+		System.exit(0);
+	}
+}
+```
+
+Semplicemente fa terminare l'app.
+Ora intercettalo con Frida per impedire all'app di terminare dopo la root detection.
+
+```javascript
+setImmediate(function() { //prevent timeout
+	console.log("[*] Starting script");
+
+	Java.perform(function() {
+		bClass = Java.use("sg.vantagepoint.uncrackable1.b");
+
+		bClass.onClick.implementation = function(v) {
+			console.log("[*] onClick called");
+		};
+
+		console.log("[*] onClick handler modified");
+	});
+});
+```
+
+Inserisci il tuo codice nella funzione `setImmediate` per non arrivare al timeout (postresti aver bisogno o meno di farlo), poi invoca `Java.perform` per usare i metodi Frida per interagire con Java.
+Dopo recupera la classe che implementa l'interfaccia `OnClickListener` e sovrascrivi il suo metodo `onClick`.
+A differenza dell'originale, la nuova versione di `onClick` scrive solo sulla console e non termina l'app.
+Se inietti la tua versione di questo metodo con Frida, l'app non dovrebbe terminare quando fai il tap su "OK".
+
+Salva lo script precedente come `uncrackable1.js` e caricalo:
+
+```sh
+$ frida -U -l uncrackable1.js sg.vantagepoint.uncrackable1
+```
+
+Dopo aver visto il messaggio "onClickHandler modified", puoi premere su "OK".
+Il suo tap non farà terminare l'app.
+
+Ora puoi provare a inserire una secret string.
+Ma da dove la prendi?
+
+Se analizzi la classe `sg.vantagepoint.uncrackable1.a`, puoi vedere la string cifrata che viene confrontata con il tuo input:
+
+```java
+package sg.vantagepoint.uncrackable1;
+
+import android.util.Base64;
+import android.util.Log;
+
+public class a {
+	public static boolean a(String string) {
+		byte[] arrby = Base64.decode((String)"5UJiFctbmgbDoLXmpL12mkno8HT4Lv8dlat8FxR2GOc=", (int)0);
+		byte[] arrby2 = new byte[]{};
+
+		try {
+			arrby2 = arrby = sg.vantagepoint.a.a.a(
+				(byte[])a.b((String)"8d127684cbc37c17616d806cf50473cc"), 
+				(byte[])arrby);
+		}
+		catch (Exception var2_2) {
+			Log.d((String)"CodeCheck", (String)("AES error:" + var2_2.getMessage()));
+		}
+
+		if (!string.equals(new String(arrby2))) 
+			return false;
+
+		return true;
+	}
+
+	public static byte[] b(String string) {
+		int n = string.length();
+		byte[] arrby = new byte[n / 2];
+		int n2 = 0;
+
+		while (n2 < n) {
+			arrby[n2 / 2] = (byte)((Character.digit(string.charAt(n2), 16) << 4) + Character.digit(string.charAt(n2 + 1), 16));
+			n2 += 2;
+		}
+
+		return arrby;
+	}
+}
+```
+
+Nota il confronto `string.equals` alla fine del metodo `a` e la creazione della string `arrby2` nel blocco `try`.
+`arrby2` è il valore restituito dalla funzione `sg.vantagepoint.a.a.a`.
+Il confronto `string.equals` confronta il tuo input con `arrby2`.
+Quindi vogliamo il valore restituito da `sg.vantagepoint.a.a.a`.
+
+Invece di fare il reversing delle routine di decifratura al fine di ricostruire la chiave segreta, 
+puoi semplicemente ignorare tutte le logiche di decifratura dell'app e fare l'hooking della funzione `sg.vantagepoint.a.a.a` per catturare il suo valore di ritorno.
+Ecco lo script completo che impedisce la terminazione dell'app a seguito della root detection e intercetta la secret string.
+
+```javascript
+setImmediate(function() {
+	console.log("[*] Starting script");
+
+	Java.perform(function() {
+		bClass = Java.use("sg.vantagepoint.uncrackable1.b");
+
+		bClass.onClick.implementation = function(v) {
+			console.log("[*] onClick called.");
+		};
+
+		console.log("[*] onClick handler modified");
+
+		aaClass = Java.use("sg.vantagepoint.a.a");
+
+		aaClass.a.implementation = function(arg1, arg2) {
+			retval = this.a(arg1, arg2);
+			password = '';
+		
+			for(i = 0; i < retval.length; i++) {
+				password += String.fromCharCode(retval[i]);
+			}
+
+			console.log("[*] Decrypted: " + password);
+			
+			return retval;
+		};
+
+		console.log("[*] sg.vantagepoint.a.a.a modified");
+	});
+});
+```
+
+Dopo aver eseguito lo script in Frida e aver visto il messaggio "[\*] sg.vantagepoint.a.a.a" nella console, inserisci un valore casuale come secret string e premi "verify".
+Dovresti vedere un output simile al seguente:
+
+```sh
+michael@sixtyseven:~/Development/frida$ frida -U -l uncrackable1.js sg.vantagepoint.uncrackable1
+	  ____
+	 / _  | Frida 9.1.16 - A world-class dynamic instrumentation framework
+	| (_| |
+	 > _  | Commands:
+	/_/ |_| help -> Displays the help system
+	. . . . object? -> Display information about 'object'
+	. . . . exit/quit -> Exit
+	. . . .
+	. . . . More info at https://www.frida.re/docs/home/
+
+[*] Starting script
+[USB::Android Emulator 5554::sg.vantagepoint.uncrackable1]-> [*] onClick handler modified
+[*] sg.vantagepoint.a.a.a modified
+[*] onClick called.
+[*] Decrypted: I want to believe
+```
+
+La funzione su cui si è fatto l'hooking ha stampato la string decifrata.
+Hai estratto la secret string senza aver dovuto approfondire la conoscenza del codice dell'app e le sue routine di decifratura.
+
+Hai visto le basi dell'analisi statica/dinamica in Android.
+Ovviamente, l'unico modo per imparare è con l'esperienza pratica:
+compila il tuo progetto su Android Studio,
+osserva come il tuo codice viene tradotto nel bytecode e nel codice nativo,
+e prova a risolvere le nostre sfide.
+
+Nelle seguenti sezioni, introdurremo alcuni argomenti avanzati, tra cui i moduli kernel e l'esecuzione dinamica.
+
+### Customizing Android for Reverse Engineering
+
+296
+
+### Customizing the RAMDisk
+
+### Customizing the Android Kernel
+
+### Booting the Custom Environment
+
+### System Call Hooking with Kernel Modules
