@@ -20,6 +20,5 @@ startActivity(createInstallIntent);
 
 Exploit:
 
-- il codice è esso stesso l'exploit, 
-l'utente viene spinto a installare un certificato root (contenuto nell'app) sul suo device nella KeyChain.
-In questo modo intercettando il traffico, l'attaccante è in grado di ispezionarlo e modificarlo
+- nessuno, mostra come importare un certificato nella KeyChain.
+Questo viene memorizzato in un file (`server.p12`) nell'assets directory.

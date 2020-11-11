@@ -20,7 +20,7 @@ private void SQLiteEnc() {
 
 Exploit:
 
-- crea uno script Frida per fare l'hooking del metodo `SQLiteDatabase.openOrCreateDatabase()` in modo da recuperare la password
+- crea uno script Frida per fare l'hooking del metodo `SQLiteDatabase.openOrCreateDatabase()` in modo da recuperare la password con cui il database viene cifrato
 
 ```javascript
 Java.perform(function () {
@@ -30,7 +30,7 @@ Java.perform(function () {
     	.overload('java.io.File', 'java.lang.String', 'net.sqlcipher.database.SQLiteDatabase$CursorFactory')
     	.implementation = function (file, password, factory) {
 
-    		console.log("[+] database password: " + password)
+    		console.log("database password: " + password)
 
 	        retVal = this.openOrCreateDatabase(file, password, factory);
 
@@ -38,5 +38,3 @@ Java.perform(function () {
     	};
 });
 ```
-
-N.B.: script Frida non verificato dato che l'app va in crash (`Abort message: 'java_vm_ext.cc:534] JNI DETECTED ERROR IN APPLICATION: unknown format specifier: 'R''`)

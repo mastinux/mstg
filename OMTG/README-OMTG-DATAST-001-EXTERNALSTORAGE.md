@@ -16,3 +16,7 @@ Solo i dati memorizzati all'interno di `/data/data/<package-name>` vengono rimos
 Exploit:
 
 - `$ adb shell cat /sdcard/password.txt`
+
+oppure
+
+- usa il secondo exploit usato per [OMTG-DATAST-001-INTERNALSTORAGE](./README-OMTG-DATAST-001-INTERNALSTORAGE.md)

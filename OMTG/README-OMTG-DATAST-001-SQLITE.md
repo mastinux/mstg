@@ -29,3 +29,26 @@ table|Accounts|Accounts|4|CREATE TABLE Accounts(Username VARCHAR,Password VARCHA
 ```
 admin|AdminPass
 ```
+
+oppure
+
+- inietta il seguente script tramite frida per interccettare le query eseguite sul database
+
+```javascript
+Java.perform(function () {
+	try {
+		var SQLiteDatabase = Java.use("android.database.sqlite.SQLiteDatabase")
+
+		SQLiteDatabase.execSQL
+			.overload('java.lang.String')
+			.implementation = function(sql){
+				console.log(sql)
+
+				return this.execSQL(sql)
+			}
+	}
+	catch(e) {
+		console.log(e.message);
+	}
+});
+```

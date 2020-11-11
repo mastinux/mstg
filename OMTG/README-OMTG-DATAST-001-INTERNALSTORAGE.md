@@ -30,3 +30,27 @@ Exploit:
 ```
 Credit Card Number is 1234 4321 5678 8765
 ```
+
+oppure
+
+- inietta il seguente script tramite frida per avere il path del file creato
+
+```javascript
+Java.perform(function () {
+
+	var fileOutputStream = Java.use("java.io.FileOutputStream");
+
+    fileOutputStream.$init
+    	.overload('java.io.File', 'boolean')
+    	.implementation = function (name, append) {
+
+    		console.log(name)
+
+    		return this.$init(name, append)
+    		
+    	}
+
+});
+```
+
+- visualizza il contenuto del file con `adb`

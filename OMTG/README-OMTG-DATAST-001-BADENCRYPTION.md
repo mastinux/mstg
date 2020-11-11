@@ -38,7 +38,7 @@ private static byte[] encrypt(String str) {
 
 Exploit:
 
-- la funzione `encrypt` fa uno XOR e il flip dei byte della stringa `vJqfip28ioydips=` decodificata
+- la funzione `encrypt` fa uno XOR e il flip dei byte della string `vJqfip28ioydips=` decodificata
 
 - esegui il seguente codice Java per ottenere la password
 
@@ -61,3 +61,5 @@ public class Main{
 	}
 }
 ```
+
+N.B.: è inutile fare hooking con Frida dato che l'hardcoded secret è già cifrato con il metodo `encrypt` e il controllo nel metodo `verify` viene eseguito tra l'input utente cifrato e l'hardcoded secret.

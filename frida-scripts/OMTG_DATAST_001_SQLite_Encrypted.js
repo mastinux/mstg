@@ -6,11 +6,9 @@ Java.perform(function () {
     	.overload('java.io.File', 'java.lang.String', 'net.sqlcipher.database.SQLiteDatabase$CursorFactory')
     	.implementation = function (file, password, factory) {
 
-    		console.log("[+] database password: " + password)
+    		console.log("database password: " + password)
 
-	        retVal = this.openOrCreateDatabase(file, password, factory);
-
-	        return retVal
+	        return this.openOrCreateDatabase(file, password, factory)
     	};
 });
 

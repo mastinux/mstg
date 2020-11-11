@@ -17,9 +17,7 @@ if (Build.VERSION.SDK_INT >= 18) {
 }
 
 KeyPairGenerator instance3 = KeyPairGenerator.getInstance("RSA", "AndroidKeyStore");
-
 instance3.initialize(keyPairGeneratorSpec);
-
 instance3.generateKeyPair();
 
 ...
@@ -90,8 +88,6 @@ this.decryptedText.setText(new String(bArr, 0, bArr.length, StringEncodings.UTF8
 Le coppie di chiavi generate tramite il `Keystore` vengono memorizzate in `/data/misc/keystore/user_0`.
 I file che le contengono sono cifrati.
 
-Il codice mostra un esempio di implementazione dell'uso dell'Android Keystore che ne impedisce l'estrazione.
-
 Exploit:
 
-- NONE
+- nessuno, mostra come generare una coppia di chiavi usando il KeyStore e come cifrare/decifrare una string con esse
