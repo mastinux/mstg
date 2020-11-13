@@ -40,10 +40,37 @@ Exploit:
 
 - usa fridump.py
 
-	python fridump.py -U -s sg.vp.owasp_mobile.omtg_android
+```sh
+$ python fridump.py -U -s sg.vp.owasp_mobile.omtg_android
+```
 
 - analizzando il file `dump/strings.txt` generato, troverai `U got the decrypted message. Well done.`
 
 oppure
 
-- implementa uno script Frida per fare l'hooking del metodo `decryptString()` per recuperare il testo in clear text
+- inietta il seguente script tramite frida per intercettare il valore decifrato
+
+```javascript
+Java.perform(function () {
+	try {
+
+		var aesCbcWithIntegrity = Java.use("com.tozny.crypto.android.AesCbcWithIntegrity")
+
+		aesCbcWithIntegrity
+			.decryptString
+			.overload('com.tozny.crypto.android.AesCbcWithIntegrity$CipherTextIvMac', 'com.tozny.crypto.android.AesCbcWithIntegrity$SecretKeys')
+			.implementation = function(arg1, arg2){
+
+				var retVal = this.decryptString(arg1, arg2)
+
+				console.log(retVal)
+
+				return retVal
+			}
+
+	}
+	catch(e) {
+		console.log(e.message);
+	}
+});
+```

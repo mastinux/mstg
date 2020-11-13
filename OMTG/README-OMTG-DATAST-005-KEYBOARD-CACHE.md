@@ -17,7 +17,6 @@
         android:inputType="textNoSuggestions"
         android:hint="@string/title_activity_omtg__datast_052__keyboard_cache"/>
 
-
 </RelativeLayout>
 ```
 
