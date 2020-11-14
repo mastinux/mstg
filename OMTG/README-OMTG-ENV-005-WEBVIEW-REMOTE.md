@@ -34,8 +34,27 @@ function fireToastMessage() {
 }
 ```
 
+I metodi Java `returnString()` e `showToast(String toast)` sono invocati usando il bridge JavaScript WebView (`Android`) per rivelare testo nascosto e per mostrare un toast nell'app.
+
 Exploit:
 
-- i metodi Java `returnString()` e `showToast(String toast)` sono invocati usando il bridge JavaScript WebView (`Android`) per rivelare testo nascosto e per mostrare un toast nell'app
+- inietta il seguente script tramite frida per recuperare le URL caricate tramite WebView e identificare i metodi degli oggetti Java accessibili da JavaScript tramite cui puoi eseguire codice arbitrario a livello Java
 
-- implementa uno script Frida per fare l'hooking di `android.webkit.WebView` al fine di stampare tutte le URL caricate tramite WebView e identificare i metodi degli oggetti Java accessibili da JavaScript tramite cui puoi eseguire codice arbitrario a livello Java
+```javascript
+Java.perform(function () {
+	try {
+		var webView = Java.use("android.webkit.WebView")
+
+		webView.loadUrl
+			.overload('java.lang.String')
+			.implementation = function(url) {
+				console.log(url)
+
+				return this.loadUrl(url)
+			}
+	}
+	catch(e) {
+		console.log(e.message);
+	}
+});
+```

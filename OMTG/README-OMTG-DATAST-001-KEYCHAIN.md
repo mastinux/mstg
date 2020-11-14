@@ -21,4 +21,4 @@ startActivity(createInstallIntent);
 Exploit:
 
 - nessuno, mostra come importare un certificato nella KeyChain.
-Questo viene memorizzato in un file (`server.p12`) nell'assets directory.
+Questo viene memorizzato in un file (`server.p12`) nell'assets directory
