@@ -34,9 +34,9 @@ public void onCreate(Bundle bundle) {
 `$ adb logcat`
 
 ```
-  682  2427 I ActivityManager: START u0 {cmp=sg.vp.owasp_mobile.omtg_android/sg.vp.owasp_mobile.OMTG_Android.OMTG_CODING_004_Code_Injection} from uid 10160
-16218 16218 W System  : ClassLoader referenced unknown path: /storage/emulated/0/libcodeinjection.jar
-16218 16218 W System.err: java.lang.ClassNotFoundException: Didn't find class "com.example.CodeInjection" on path: DexPathList[[],nativeLibraryDirectories=[/system/lib, /system/vendor/lib]]
+I ActivityManager: START u0 {cmp=sg.vp.owasp_mobile.omtg_android/sg.vp.owasp_mobile.OMTG_Android.OMTG_CODING_004_Code_Injection} from uid 10160
+W System  : ClassLoader referenced unknown path: /storage/emulated/0/libcodeinjection.jar
+W System.err: java.lang.ClassNotFoundException: Didn't find class "com.example.CodeInjection" on path: DexPathList[[],nativeLibraryDirectories=[/system/lib, /system/vendor/lib]]
 ```
 
 Exploit:
@@ -44,3 +44,4 @@ Exploit:
 - crea un .jar che abbia una classe `com.example.CodeInjection` con un metodo `returnString`
 
 - copia il .jar in /sdcard
+
