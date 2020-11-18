@@ -286,8 +286,8 @@ Diversamente, un attaccante potrebbe fare il replay della transazione
 ### Additional Security Features
 
 Da Android 7.0 è possibile usare il metodo `setInvalidatedByBiometricEnrollment(boolean invalidateKey)` su `KeyGenParameterSpec.Builder`.
-Quando `invalidateKey` viene impostato a `true` (di default), le chiavi che sono valide per un'autenticazine con impronte digitali diventano invalide quando viene registrata una nuova impronta digitale.
-Ciò impedisce a un attaccante di recuperare la chiave anche se sono capaci di registrare una nuova impronta digitale.
+Quando `invalidateKey` viene impostato a `true` (di default), le chiavi che sono valide per un'autenticazine con impronte digitali diventano invalide nel momento in cui viene registrata una nuova impronta digitale.
+Ciò impedisce a un attaccante di recuperare la chiave anche se è in grado di registrare una nuova impronta digitale.
 Android 8.0 aggiunge due codici di errore:
 
 - `FINGERPRINT_ERROR_LOCKOUT_PERMANENT`: l'utente ha provato troppe volte a sbloccare il device usando il lettore di impronte digitali
