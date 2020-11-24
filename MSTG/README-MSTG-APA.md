@@ -91,10 +91,10 @@ Dato che un utente può revocare una permission dangerous per un'app, lo svilupp
 ```
 
 Analizza le permission insieme agli sviluppatori per identificare il motivo del loro utilizzo e rimuovi quelle non necessarie.
-Oltre ad analizzare manualmente il file AndroidManifest.xml, puoi usare il Android Asset Packaging Tool per esaminare le permission.
+Oltre ad analizzare manualmente il file AndroidManifest.xml, puoi usare l'Android Asset Packaging Tool per esaminare le permission.
 
 ```sh
-$ aapt d permissions com.owasp.mstg.myappp
+$ aapt2 d permissions com.owasp.mstg.myappp
 uses-permission: android.permission.WRITE_CONTACTS
 uses-permission: android.permission.CHANGE_CONFIGURATION
 uses-permission: android.permission.SYSTEM_ALERT_WINDOW
@@ -536,8 +536,7 @@ if (Intent.ACTION_VIEW.equals(intent.getAction())) {
 La definizione e l'uso di URL schema possono essere rischiosi in questa situazione se i dati sono inviati alle URL scheme dall'esterno ed elaborati dall'app.
 Quindi tieni presente che i dati devono essere validati come descritto in "Testing Custom URL Schemes".
 
-## Testing for Insecure Configuration of Instant Apps (MSTG-ARCH-1, MSTGARCH-
-7)
+## Testing for Insecure Configuration of Instant Apps (MSTG-ARCH-1, MSTGARCH-7)
 
 Con Google Play Instant puoi creare le Instant app.
 Un'instant app può essere lanciata direttamente da un browser o tramite il "try now" button dell'app store a partire da Android 6.0.
