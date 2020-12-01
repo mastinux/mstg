@@ -64,6 +64,10 @@ Ignora l'errore "CertPath not validated".
 Questo errore si verifica con Java SDK 7 e superiori.
 Invece di usare `jarsigner` puoi usare `apksigner` per verificare la catena di certificati.
 
+```sh
+apksigner verify --print-certs example.apk
+```
+
 La signing configuration può essere gestita tramite Android Studio o il blocco `signingConfig` in `build.gradle`.
 Per attivare tutti e tre gli scheme, i seguenti valori devono essere impostati:
 
@@ -316,7 +320,7 @@ Lo stesso vale per plugin/librerie di Cordova, app React-native e app Xamarin.
 #### Detecting vulnerabilities of third party libraries
 
 L'individuazione delle vulnerabilità nelle dipendenze può essere eseguita tramite l'OWASP Dependency checker.
-Si consiglia l'uso di un plugin gradle, come `dependecy-check-gradle`.
+Si consiglia l'uso di un plugin gradle, come `dependency-check-gradle`.
 Per usare il plugin, segui i seguenti passi:
 installa il plugin dal Maven central repository aggiungendo il seguente script in build.gradle:
 
@@ -327,7 +331,7 @@ buildscript {
 	}
 
 	dependencies {
-		classpath 'org.owasp:dependency-check-gradle:3.2.0'
+		classpath 'org.owasp:dependency-check-gradle:6.0.3'
 	}
 }
 
@@ -408,7 +412,7 @@ Se puoi recuperare la versione della libreria, anche tramite i commenti o tramit
 ### Dynamic Analysis
 
 L'analisi dinamica di questa sezione consiste nel controllare se si è aderito ai copyright delle licenze.
-Spesso significa che l'app dovrebbe avere una sezione `about` o `EULA` in cui le dichiarazioni di cocpyright sono annotate come richiesto nelle licenze delle librerie di terze parti.
+Spesso significa che l'app dovrebbe avere una sezione `about` o `EULA` in cui le dichiarazioni di copyright sono annotate come richiesto nelle licenze delle librerie di terze parti.
 
 ## Testing Exception Handling (MSTG-CODE-6 and MSTG-CODE-7)
 

@@ -932,9 +932,9 @@ Extra: newpass=12345 (java.lang.String)
 
 JavaScript può essere iniettato nelle web app tramite reflected, stored o DOM-based Cross-Site Scripting (XSS).
 Le app mobile sono eseguite in sandbox e non hanno queste vulnerabilità quando sono implementate nativamente.
-Tuttavia, le WebView potrebbero essere parte di un'app nativa per consentire il rendering di pagine web.
+Tuttavia, le WebView potrebbero far parte di un'app nativa per consentire il rendering di pagine web.
 In Android, le WebView usano il rendering engine WebKit per mostrare le pagine web, ma le pagine sono ridotte alle funzioni minime, per esempio, non hanno la barra degli indirizzi.
-Se l'implementazione di WebView non è accurata e permette l'uso di JavaScript, questo può essere usato per attaccare l'app e accedere ai suoi dati.
+Se l'implementazione di WebView non è accurata e permette l'uso di JavaScript, potrebbe essere possibile attaccare l'appp e accedere ai suoi dati.
 
 ### Static Analysis
 
@@ -1403,7 +1403,7 @@ Da Android 5.0, insieme alla Play Core Library, si può forzare l'aggiornamento 
 Questo meccanismo si basa sull'uso di `AppUpdateManager`.
 Prima erano usati altri meccanismi, come chiamate http verso il Google Play Store, che non sono tanto affidabili dato che le API del Play Store potrebbero cambiare.
 Diversamente, si potrebbe usare Firebase per controllare possibili aggiornamenti forzati.
-Gli aggiornamenti forzati possono essere veramente utili in caso di public key pinning (guarda Testing Network communication per maggiori dettagli) quando un pin deve essere aggiornato a causa di una certificat/public key rotation.
+Gli aggiornamenti forzati possono essere veramente utili in caso di public key pinning (guarda Testing Network communication per maggiori dettagli) quando un PIN deve essere aggiornato a causa di una certificate/public key rotation.
 Inoltre, le vulnerabilità sono facilmente risolte tramite gli aggiornamenti forzati.
 
 Nota che le nuove versioni dell'app non risolveranno le issue di sicurezza che riguardano i back-end con cui l'app comunica.
