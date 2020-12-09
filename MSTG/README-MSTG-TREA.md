@@ -1494,7 +1494,7 @@ Anche se questo controllo è facilmente raggirabile, potresti ancora trovare del
 Tuttavia, un debugger imperfetto resta sempre un tool inestimabile, la capacità di ispezionare lo stato di un programma a runtime rende molto più facile la comprensione del programma stesso.
 
 Per convertire una build di release in una build di debug, devi modificare il relativo flag nell'AndroidManifest.xml.
-Dopo aver fatto l'unpacking dell'app (es. `apktool d --no-srce UnCrackable-Level1.apk`) e aver decodificato l'AndroidManifest.xml, aggiungi `android:debuggable="true"`:
+Dopo aver fatto l'unpacking dell'app (es. `apktool d --no-src UnCrackable-Level1.apk`) e aver decodificato l'AndroidManifest.xml, aggiungi `android:debuggable="true"`:
 
 ```xml
 <application android:allowBackup="true" android:debuggable="true" 

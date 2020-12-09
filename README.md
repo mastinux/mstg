@@ -17,6 +17,7 @@
 
 - [Android Platform Overview](./MSTG/README-MSTG-APO.md)
 - [Android Basic Security Testing](./MSTG/README-MSTG-ABST.md)
+- [Data Storage on Android](./MSTG/README-MSTG-DSA.md)
 - [Android Cryptographic APIs](./MSTG/README-MSTG-ACA.md)
 - [Local Authentication on Android](./MSTG/README-MSTG-LAA.md)
 - [Android Network APIs](./MSTG/README-MSTG-ANA.md)
