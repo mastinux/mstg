@@ -717,11 +717,11 @@ Fai riferimento all'esempio di `SecureSecretKey` per un'esempio di un'implementa
 
 ### Dynamic Analysis
 
-Per un'analisi rudimentale, usa i tool built-in di Android Studio.
-Li trovi nel tab Android Monitor.
-Per fare il dump della memoria, scegli il device e l'app che vuoi analizzare e clicca su Dump Java Heap.
-Viene creato un file .hprof.
-Per navigare nelle istanze della classe salvate nel memory dump, scegli il Package Tree View nel tab che mostra il file .hprof.
+Per un'analisi rudimentale, usa la versione standalone di Android Profiler disponibile in `<studio-installation-folder>/bin` ([https://developer.android.com/studio/profile/android-profiler#standalone-profilers](https://developer.android.com/studio/profile/android-profiler#standalone-profilers)).
+Per fare il dump della memoria, scegli il device e l'app che vuoi analizzare.
+Scegli MEMORY e clicca su `Dump Java heap`.
+Esporta il dump nel file con estensione .hprof.
+
 Per un'analisi più avanzata usa l'Eclipse Memory Anlayzer Tool (MAT).
 Per analizzare il dump in MAT, usa `hprof-conv`, disponibile con l'Android SDK.
 
