@@ -94,7 +94,7 @@ Analizza le permission insieme agli sviluppatori per identificare il motivo del 
 Oltre ad analizzare manualmente il file AndroidManifest.xml, puoi usare l'Android Asset Packaging Tool per esaminare le permission.
 
 ```sh
-$ aapt2 d permissions com.owasp.mstg.myappp
+$ aapt2 d permissions com.owasp.mstg.myapp
 uses-permission: android.permission.WRITE_CONTACTS
 uses-permission: android.permission.CHANGE_CONFIGURATION
 uses-permission: android.permission.SYSTEM_ALERT_WINDOW
@@ -934,7 +934,7 @@ JavaScript può essere iniettato nelle web app tramite reflected, stored o DOM-b
 Le app mobile sono eseguite in sandbox e non hanno queste vulnerabilità quando sono implementate nativamente.
 Tuttavia, le WebView potrebbero far parte di un'app nativa per consentire il rendering di pagine web.
 In Android, le WebView usano il rendering engine WebKit per mostrare le pagine web, ma le pagine sono ridotte alle funzioni minime, per esempio, non hanno la barra degli indirizzi.
-Se l'implementazione di WebView non è accurata e permette l'uso di JavaScript, potrebbe essere possibile attaccare l'appp e accedere ai suoi dati.
+Se l'implementazione di WebView non è accurata e permette l'uso di JavaScript, potrebbe essere possibile attaccare l'app e accedere ai suoi dati.
 
 ### Static Analysis
 
